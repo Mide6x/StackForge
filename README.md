@@ -161,6 +161,20 @@ When `.` is used, StackForge will generate directly inside the current directory
 
 Destination handling will protect existing files. StackForge will not silently overwrite a non-empty project directory.
 
+### Existing-directory limitation
+
+When generating a frontend-only or backend-only application directly into an existing directory, StackForge only proceeds if the destination is empty or contains harmless ignored files such as `.DS_Store`. It does not attempt to merge generated framework files with an existing project. This is intentional because tools such as `create-next-app` and `create-vite` are designed to create new applications, not safely merge into existing ones.
+
+If the selected folder already contains project files, StackForge reports:
+
+```text
+StackForge cannot generate this application in the selected folder because it
+already contains project files.
+
+Choose an empty folder, create a new project directory, or run StackForge from
+another location.
+```
+
 ## Generated Layouts
 
 ### Full-stack project
@@ -252,6 +266,10 @@ Docker
 
 The exact instructions will adapt to the selected providers. For example, a FastAPI project will show its Python command, while a Spring Boot project will show its Maven command.
 
+The most complete full-stack summary currently exists for the Next.js + Express + PostgreSQL combination. That path includes enriched Docker, environment-variable, service, and startup guidance.
+
+Other supported combinations still receive accurate provider-based runtime instructions, including generated locations, development commands, and local URLs. Their integration-aware Docker, environment, database, and cross-service guidance is still being expanded.
+
 ## Architecture
 
 StackForge is an npm-workspaces monorepo.
@@ -272,6 +290,7 @@ stackforge/
 │   ├── mongodb/
 │   └── supabase/
 ├── integrations/
+│   └── nextjs-express-postgres/
 ├── package.json
 └── tsconfig.base.json
 ```
@@ -344,6 +363,10 @@ const provider: StackForgeProvider = {
 
 export default provider;
 ```
+
+### `integrations/*`
+
+Integration recipes enrich compatible provider combinations without forcing providers to know each other's internals. This is where StackForge can add cross-stack wiring such as Docker Compose orchestration, environment-variable coordination, startup guidance, and service-aware summaries.
 
 ## Provider-driven Design
 
