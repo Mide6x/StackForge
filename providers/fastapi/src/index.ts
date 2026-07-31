@@ -1,0 +1,20 @@
+import type { StackForgeProvider } from "@stackforge/core";
+import { targetDirectory, writeText } from "@stackforge/core";
+
+const provider: StackForgeProvider = {
+  metadata: { id: "fastapi", name: "FastAPI", category: "backend", description: "Modern Python API framework", version: "latest", supportedLanguages: ["python"], tags: ["python", "api"] },
+  compatibility: { projectTypes: ["full-stack", "backend-only"] },
+  generator: { async generate(context) {
+    const target = targetDirectory(context, "backend");
+    await Promise.all([
+      writeText(target, "pyproject.toml", '[project]\nname = "backend"\nversion = "0.1.0"\nrequires-python = ">=3.11"\ndependencies = ["fastapi>=0.115", "uvicorn[standard]>=0.30"]\n\n[tool.uv]\ndev-dependencies = ["pytest>=8.0", "ruff>=0.6"]\n'),
+      writeText(target, "app/main.py", 'from fastapi import FastAPI\n\napp = FastAPI(title="StackForge API")\n\n@app.get("/health")\nasync def health() -> dict[str, str]:\n    return {"status": "ok"}\n'),
+      writeText(target, "app/__init__.py", ""),
+      writeText(target, "README.md", "# FastAPI backend\n\nRun with `uv run uvicorn app.main:app --reload`.\n"),
+    ]);
+    if (context.selection.docker) await writeText(target, "Dockerfile", "FROM python:3.12-slim\nWORKDIR /app\nCOPY pyproject.toml .\nRUN pip install --no-cache-dir fastapi 'uvicorn[standard]'\nCOPY app ./app\nEXPOSE 8000\nCMD [\"uvicorn\", \"app.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n");
+  } },
+  getDependencies: () => [{ name: "fastapi", version: ">=0.115", type: "python" }],
+};
+export default provider;
+export { provider };

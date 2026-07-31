@@ -1,0 +1,32 @@
+{
+  "name": "create-stackforge",
+  "version": "0.1.0",
+  "description": "Create modern full-stack projects with StackForge",
+  "type": "module",
+  "bin": {
+    "create-stackforge": "./dist/index.js",
+    "stackforge": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.7.0",
+    "@stackforge/core": "0.1.0",
+    "@stackforge/provider-express": "0.1.0",
+    "@stackforge/provider-fastapi": "0.1.0",
+    "@stackforge/provider-mongodb": "0.1.0",
+    "@stackforge/provider-nextjs": "0.1.0",
+    "@stackforge/provider-postgres": "0.1.0",
+    "@stackforge/provider-react": "0.1.0",
+    "@stackforge/provider-springboot": "0.1.0",
+    "@stackforge/provider-supabase": "0.1.0",
+    "@stackforge/provider-vue": "0.1.0"
+  }
+}
