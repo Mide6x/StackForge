@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { ProviderTestingSupport, TestingGenerationContext } from "@stackforge/core";
 import { targetDirectory } from "@stackforge/core";
 

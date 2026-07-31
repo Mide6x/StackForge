@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { SupportedLanguage } from "@stackforge/core";
 
 export type FrontendId = "nextjs" | "react" | "vue";

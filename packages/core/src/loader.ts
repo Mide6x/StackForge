@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { StackForgeIntegration, StackForgeProvider } from "./contracts.js";
 
 export async function loadProvider(moduleName: string): Promise<StackForgeProvider> {

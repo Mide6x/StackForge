@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { GeneratedFileWriter } from "@stackforge/core";
 import type { BackendId, FrontendId } from "../catalog.js";
 

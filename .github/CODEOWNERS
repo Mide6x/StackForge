@@ -1,0 +1,15 @@
+* @Mide6x
+
+/packages/core/ @Mide6x
+/packages/cli/ @Mide6x
+/providers/ @Mide6x
+/integrations/ @Mide6x
+/.github/ @Mide6x
+/LICENSE @Mide6x
+/NOTICE @Mide6x
+/README.md @Mide6x
+/CONTRIBUTING.md @Mide6x
+/SECURITY.md @Mide6x
+/TRADEMARKS.md @Mide6x
+/package.json @Mide6x
+/package-lock.json @Mide6x

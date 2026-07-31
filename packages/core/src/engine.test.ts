@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import assert from "node:assert/strict";
 import { access, chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { basename, resolve } from "node:path";
 import { access, readdir } from "node:fs/promises";
 import { constants } from "node:fs";

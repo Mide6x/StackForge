@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Bug report
+description: Report a reproducible problem with StackForge.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve StackForge. Remove secrets and personal data from all logs before submitting.
+
+  - type: input
+    id: version
+    attributes:
+      label: StackForge version or commit
+      placeholder: v0.1.0 or a commit SHA
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: v24.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Ubuntu 24.04, Windows 11
+    validations:
+      required: true
+
+  - type: textarea
+    id: stack
+    attributes:
+      label: Selected stack
+      description: Include project type, frontend, backend, database, languages, Docker, and testing selections.
+      placeholder: |
+        Project type: Full Stack
+        Frontend: Next.js / TypeScript
+        Backend: Express / TypeScript
+        Database: PostgreSQL
+        Docker: Yes
+        Tests: Frontend Vitest, backend Vitest + Supertest
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Exact command
+      placeholder: npm run dev -- my-app
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove tokens, credentials, private URLs, and personal data.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets and personal data from this report.
+          required: true

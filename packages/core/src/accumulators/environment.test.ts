@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

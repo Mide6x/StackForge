@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { StackForgeIntegration } from "@stackforge/core";
 import {
   backendDirectoryName,

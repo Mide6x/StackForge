@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { ProviderCategory, ProviderRegistry, StackForgeProvider } from "./contracts.js";
 
 export class InMemoryProviderRegistry implements ProviderRegistry {

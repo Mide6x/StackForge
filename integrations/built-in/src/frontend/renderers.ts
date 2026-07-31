@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { FrontendDefinition } from "../catalog.js";
 
 export interface FrontendRenderedFiles {

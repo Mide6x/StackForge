@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { access, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
