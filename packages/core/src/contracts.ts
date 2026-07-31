@@ -109,6 +109,12 @@ export interface GenerationEngine {
   generate(context: GenerationContext): Promise<GenerationResult>;
 }
 
+export type IntegrationPhase =
+  | "connect-applications"
+  | "connect-database"
+  | "compose-infrastructure"
+  | "finalize";
+
 export interface IntegrationMetadata {
   id: string;
   name: string;
@@ -118,9 +124,152 @@ export interface IntegrationMetadata {
 
 export interface StackForgeIntegration {
   metadata: IntegrationMetadata;
+  phase?: IntegrationPhase;
+  priority?: number;
   isApplicable?(selection: ProviderSelection): boolean;
-  integrate(context: GenerationContext): Promise<void>;
+  apply?(context: IntegrationContext): Promise<void>;
+  /** @deprecated Use apply() with an explicit phase. */
+  integrate?(context: GenerationContext): Promise<void>;
+  /** @deprecated Contribute through context.result. */
   augmentResult?(result: GenerationResult, context: GenerationContext): Promise<void> | void;
+}
+
+export type EnvironmentTarget = "root" | "frontend" | "backend";
+
+export interface EnvironmentVariableContribution {
+  name: string;
+  exampleValue: string;
+  description?: string;
+  section?: string;
+  targets: EnvironmentTarget[];
+  sensitive?: boolean;
+}
+
+export interface EnvironmentAccumulator {
+  add(contribution: EnvironmentVariableContribution): void;
+}
+
+export type ComposeComponent = "frontend" | "backend" | "database";
+
+export interface ComposeBuildContribution {
+  context: string;
+  dockerfile?: string;
+  args?: Record<string, string>;
+}
+
+export interface ComposeServiceContribution {
+  image?: string;
+  build?: ComposeBuildContribution;
+  command?: string[];
+  environment?: Record<string, string>;
+  ports?: string[];
+  volumes?: string[];
+  dependsOn?: Record<string, { condition?: "service_started" | "service_healthy" }>;
+  healthcheck?: {
+    test: string[];
+    interval?: string;
+    timeout?: string;
+    retries?: number;
+  };
+  networks?: string[];
+  component?: ComposeComponent;
+}
+
+export interface ComposeAccumulator {
+  addService(name: string, service: ComposeServiceContribution): void;
+  addVolume(name: string): void;
+  addNetwork(name: string): void;
+}
+
+export type DependencyManager = "npm" | "python" | "maven";
+export type DependencyTarget = "frontend" | "backend";
+
+export type DependencyContribution =
+  | {
+    manager: "npm";
+    target: DependencyTarget;
+    name: string;
+    version?: string;
+    development?: boolean;
+  }
+  | {
+    manager: "python";
+    target: "backend";
+    name: string;
+    version?: string;
+    group?: "main" | "development";
+  }
+  | {
+    manager: "maven";
+    target: "backend";
+    groupId: string;
+    artifactId: string;
+    version?: string;
+    scope?: string;
+  };
+
+export interface DependencyAccumulator {
+  add(contribution: DependencyContribution): void;
+}
+
+export interface DependencyInstallationOutcome {
+  manager: DependencyManager;
+  directory: string;
+  status: "succeeded" | "skipped" | "failed" | "not-required";
+  command?: string[];
+  reason?: string;
+}
+
+export interface DocumentationContribution {
+  id: string;
+  title: string;
+  content: string;
+  target?: "root" | "frontend" | "backend";
+  order?: number;
+}
+
+export interface DocumentationAccumulator {
+  add(contribution: DocumentationContribution): void;
+}
+
+export interface DatabaseResultDetails {
+  providerId: string;
+  name: string;
+  setupSteps: string[];
+  localServiceName?: string;
+}
+
+export interface IntegrationConnectionResult {
+  frontendProviderId: string;
+  backendProviderId: string;
+  apiEnvironmentVariable: string;
+  apiUrl: string;
+  healthUrl: string;
+}
+
+export interface GenerationResultBuilder {
+  addWarning(message: string): void;
+  addManualStep(id: string, message: string): void;
+  setConnection(details: IntegrationConnectionResult): void;
+  setDatabase(details: DatabaseResultDetails): void;
+  setDocker(details: DockerGenerationResult): void;
+  addEnvironmentFile(path: string): void;
+  addDependencyOutcome(outcome: DependencyInstallationOutcome): void;
+}
+
+export interface GeneratedFileWriter {
+  create(relativePath: string, content: string): Promise<void>;
+  replaceProviderFile(relativePath: string, content: string): Promise<void>;
+  exists(relativePath: string): Promise<boolean>;
+}
+
+export interface IntegrationContext extends GenerationContext {
+  readonly environment: EnvironmentAccumulator;
+  readonly compose: ComposeAccumulator;
+  readonly dependencies: DependencyAccumulator;
+  readonly documentation: DocumentationAccumulator;
+  readonly result: GenerationResultBuilder;
+  readonly files: GeneratedFileWriter;
 }
 
 export interface GeneratedComponent {
@@ -148,4 +297,9 @@ export interface GenerationResult {
   environmentFiles: string[];
   warnings: string[];
   completedSteps: string[];
+  dependencyInstallations?: DependencyInstallationOutcome[];
+  database?: DatabaseResultDetails;
+  connection?: IntegrationConnectionResult;
+  manualSteps?: string[];
+  appliedIntegrations?: string[];
 }

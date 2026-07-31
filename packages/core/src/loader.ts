@@ -12,8 +12,29 @@ export async function loadProvider(moduleName: string): Promise<StackForgeProvid
 export async function loadIntegration(moduleName: string): Promise<StackForgeIntegration> {
   const loaded = await import(moduleName);
   const integration = loaded.default as StackForgeIntegration | undefined;
-  if (!integration?.metadata || typeof integration.integrate !== "function") {
+  if (
+    !integration?.metadata
+    || (typeof integration.integrate !== "function" && typeof integration.apply !== "function")
+  ) {
     throw new Error(`Module "${moduleName}" does not export a StackForge integration as its default export.`);
   }
   return integration;
+}
+
+export async function loadIntegrationModule(moduleName: string): Promise<StackForgeIntegration[]> {
+  const loaded = await import(moduleName);
+  const exported = (loaded.integrations ?? loaded.default) as
+    | StackForgeIntegration
+    | StackForgeIntegration[]
+    | undefined;
+  const integrations = Array.isArray(exported) ? exported : exported ? [exported] : [];
+  if (
+    integrations.length === 0
+    || integrations.some((integration) =>
+      !integration?.metadata
+      || (typeof integration.integrate !== "function" && typeof integration.apply !== "function"))
+  ) {
+    throw new Error(`Module "${moduleName}" does not export StackForge integrations.`);
+  }
+  return integrations;
 }

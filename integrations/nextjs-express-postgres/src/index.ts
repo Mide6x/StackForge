@@ -143,7 +143,7 @@ EXPOSE 3000
 CMD ["npm", "run", "start"]
 `;
 
-const backendDockerfile = `FROM node:22-alpine AS builder
+const typescriptBackendDockerfile = `FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -156,6 +156,16 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+EXPOSE 3001
+CMD ["npm", "run", "start"]
+`;
+
+const javascriptBackendDockerfile = `FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY . .
 EXPOSE 3001
 CMD ["npm", "run", "start"]
 `;
@@ -318,7 +328,11 @@ export const integration: StackForgeIntegration = {
         writeText(context.rootDirectory, "compose.yaml", composeFile),
         writeText(frontendDirectory, "Dockerfile", frontendDockerfile),
         writeText(frontendDirectory, ".dockerignore", "node_modules\n.next\n.env*\n"),
-        writeText(backendDirectory, "Dockerfile", backendDockerfile),
+        writeText(
+          backendDirectory,
+          "Dockerfile",
+          isTypeScript ? typescriptBackendDockerfile : javascriptBackendDockerfile,
+        ),
         writeText(backendDirectory, ".dockerignore", "node_modules\ndist\n.env*\n"),
       ]);
     }

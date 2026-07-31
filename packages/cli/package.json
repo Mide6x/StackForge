@@ -20,7 +20,7 @@
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "@stackforge/core": "0.1.0",
-    "@stackforge/integration-nextjs-express-postgres": "0.1.0",
+    "@stackforge/integrations-built-in": "0.1.0",
     "@stackforge/provider-express": "0.1.0",
     "@stackforge/provider-fastapi": "0.1.0",
     "@stackforge/provider-mongodb": "0.1.0",

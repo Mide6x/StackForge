@@ -9,7 +9,7 @@
 
 Instead of maintaining one large generator filled with framework-specific conditionals, StackForge keeps each technology inside an isolated provider. The CLI discovers the available providers, collects the user's choices, validates compatibility, and asks the generation engine to compose the selected stack.
 
-> StackForge is currently in active MVP development. The architecture and built-in providers are available, but some cross-stack integrations and publishing workflows are still being completed.
+> StackForge is currently in active MVP development. All advertised frontend, backend, and database combinations now receive composable application and database wiring. Generated-build coverage, container-image validation, and npm publishing are still being expanded.
 
 ## Vision
 
@@ -81,11 +81,11 @@ Each backend scaffold includes a basic health endpoint at `/health`.
 
 | Provider | Current generated configuration |
 | --- | --- |
-| PostgreSQL | `DATABASE_URL` example and optional Docker Compose service |
-| MongoDB | `MONGODB_URI` example and optional Docker Compose service |
-| Supabase | Environment variable placeholders and setup guidance |
+| PostgreSQL | Backend client or persistence configuration, `DATABASE_URL`, health integration, and optional Compose service |
+| MongoDB | Backend client configuration, `MONGODB_URI`, health integration, and optional Compose service |
+| Supabase | Backend client configuration, separated public/server credentials, health integration, and setup guidance |
 
-Database-to-backend ORM, driver, and client integrations are part of the active MVP roadmap.
+Database dependencies and generated source are selected for Express, FastAPI, or Spring Boot. Supabase service-role credentials are restricted to backend and root environment templates and are never written to frontend output.
 
 ## Example Interactive Flow
 
@@ -123,7 +123,7 @@ The interactive interface is built with [Clack](https://github.com/bombshell-dev
 
 ## Project Destination Behaviour
 
-StackForge is being designed to support both named project directories and generation inside the current directory.
+StackForge supports both named project directories and generation inside the current directory.
 
 ### Create a new project directory
 
@@ -151,7 +151,13 @@ npm run dev -- ./projects/my-app
 
 ### Use the current directory
 
-The intended published CLI behaviour will also support:
+The local CLI supports:
+
+```bash
+npm run dev -- .
+```
+
+The published CLI is intended to support:
 
 ```bash
 npm create stackforge .
@@ -189,7 +195,7 @@ my-app/
 │   ├── src/ or app/
 │   ├── package.json, pyproject.toml, or pom.xml
 │   └── Dockerfile        # when Docker is selected
-├── docker-compose.yml    # when supplied by a selected provider
+├── compose.yaml          # when Docker is selected
 ├── .editorconfig
 ├── .env.example
 ├── .gitignore
@@ -225,9 +231,9 @@ my-api/
 └── README.md
 ```
 
-## Intended Completion Summary
+## Completion Summary
 
-A successful generator should not leave the developer guessing what to do next. StackForge is being developed to finish with provider-specific locations, commands, URLs, and environment setup instructions.
+A successful generation finishes with provider-specific locations, commands, URLs, dependency state, health checks, database setup, environment files, and accurate Docker instructions.
 
 Example:
 
@@ -264,11 +270,60 @@ Docker
 └ StackForge is ready. Start building.
 ```
 
-The exact instructions will adapt to the selected providers. For example, a FastAPI project will show its Python command, while a Spring Boot project will show its Maven command.
+The exact instructions adapt to the selected providers. Integration modules contribute summary details instead of requiring the CLI to hardcode framework commands. Supabase summaries explicitly describe its remote setup, and Docker output does not claim to start a complete stack when an external service is still required.
 
-The most complete full-stack summary currently exists for the Next.js + Express + PostgreSQL combination. That path includes enriched Docker, environment-variable, service, and startup guidance.
+## Integration and Validation Support
 
-Other supported combinations still receive accurate provider-based runtime instructions, including generated locations, development commands, and local URLs. Their integration-aware Docker, environment, database, and cross-service guidance is still being expanded.
+StackForge distinguishes four levels of support:
+
+- **Scaffolded**: the official generator or provider template creates the application.
+- **Connected**: the frontend has an API client and environment variable, the backend has restricted CORS, and the backend has database configuration and a database-aware health endpoint.
+- **Build validated**: an automated generated-project smoke test has built or syntax-checked the output.
+- **Docker validated**: the generated Compose model has passed `docker compose config`. This does not mean every image has been built or started.
+
+### Frontend and backend connectors
+
+Every frontend/backend pairing is implemented through reusable connector factories:
+
+| Frontend | Express | FastAPI | Spring Boot |
+| --- | --- | --- | --- |
+| Next.js | Connected | Connected | Connected |
+| React with Vite | Connected | Connected | Connected |
+| Vue with Vite | Connected | Connected | Connected |
+
+Each connector supplies the correct frontend API variable, a small API client, a health request, the expected local ports, and backend CORS restricted to the frontend development origin.
+
+### Backend and database connectors
+
+| Backend | PostgreSQL | MongoDB | Supabase |
+| --- | --- | --- | --- |
+| Express | Connected | Connected | Connected |
+| FastAPI | Connected | Connected | Connected |
+| Spring Boot | Connected | Connected | Connected, experimental REST-client model |
+
+These two connector layers compose into all 27 advertised full-stack combinations without one package per three-provider permutation.
+
+### Generated-project validation matrix
+
+| Generated path | Current validation |
+| --- | --- |
+| Next.js TypeScript frontend-only | Build validated |
+| Next.js JavaScript frontend-only | Build validated |
+| React TypeScript frontend-only | Build validated |
+| Vue TypeScript frontend-only | Build validated |
+| Express TypeScript backend-only | Build validated |
+| Express JavaScript backend-only | Syntax validated |
+| FastAPI backend-only | Python compile validated |
+| Spring Boot backend-only | Test exists; not run locally without Maven and Java 21 |
+| Next.js TS + Express TS + PostgreSQL | Build validated |
+| Next.js JS + Express JS + PostgreSQL | Build validated |
+| React + FastAPI + MongoDB | Frontend build and backend compile validated |
+| Vue + Spring Boot + PostgreSQL | Test exists; not run locally without Maven and Java 21 |
+| Next.js + FastAPI + Supabase | Frontend build and backend compile validated |
+
+All 27 combinations are covered by fast integration tests that verify generated source, dependencies, environment contributions, summary data, and connector applicability. The table above separately identifies combinations exercised through real generated-project commands.
+
+For local PostgreSQL and MongoDB stacks, Compose includes frontend, backend, and database services. Supabase remains an external service, so its Compose result is intentionally not reported as starting the complete stack.
 
 ## Architecture
 
@@ -290,7 +345,11 @@ stackforge/
 │   ├── mongodb/
 │   └── supabase/
 ├── integrations/
-│   └── nextjs-express-postgres/
+│   ├── built-in/
+│   └── nextjs-express-postgres/ # legacy compatibility fixture
+├── tests/
+│   ├── generated/
+│   └── docker/
 ├── package.json
 └── tsconfig.base.json
 ```
@@ -306,6 +365,8 @@ The core package contains the framework-agnostic contracts and orchestration log
 - Dynamic provider loading
 - Shared filesystem helpers
 - The default generation engine
+- Environment, Compose, dependency, documentation, and result accumulators
+- A phase-ordered integration runner
 - Command execution utilities
 
 The core package does not need to understand Next.js, Express, PostgreSQL, or any other specific technology.
@@ -366,7 +427,34 @@ export default provider;
 
 ### `integrations/*`
 
-Integration recipes enrich compatible provider combinations without forcing providers to know each other's internals. This is where StackForge can add cross-stack wiring such as Docker Compose orchestration, environment-variable coordination, startup guidance, and service-aware summaries.
+Integration recipes enrich compatible providers without forcing providers to know each other's internals. Built-in integrations are composed from:
+
+```text
+frontend/backend connector
+        +
+backend/database connector
+        +
+backend source finalizer
+        +
+infrastructure contributor
+```
+
+The generation lifecycle is phase ordered:
+
+```text
+validate selection
+scaffold providers
+connect applications
+connect database
+contribute infrastructure
+finalize integration source
+apply and install contributed dependencies
+write merged environment, documentation, and Compose files
+validate output
+build GenerationResult
+```
+
+Shared files are produced through accumulators. Environment keys, Compose services, and dependency versions are deduplicated, while incompatible duplicate contributions fail with an ownership-aware conflict error. Integrations write through a controlled generated-file API so they cannot silently replace unrelated user files.
 
 ## Provider-driven Design
 
@@ -428,7 +516,19 @@ This creates `my-app` relative to the current working directory.
 npm test
 ```
 
-Tests are expected to grow into a generation matrix that verifies provider scaffolds, compatibility rules, destination handling, Docker output, and generated application builds.
+Run the opt-in generated-project suite, which downloads framework dependencies and executes generated build or syntax commands:
+
+```bash
+STACKFORGE_RUN_GENERATED_SMOKE=1 npm run test:generated
+```
+
+Run Compose validation:
+
+```bash
+npm run test:docker
+```
+
+The Docker suite skips clearly if the Docker CLI is unavailable. Compose configuration validation does not require starting containers.
 
 ## Root Scripts
 
@@ -437,72 +537,51 @@ Tests are expected to grow into a generation matrix that verifies provider scaff
 | `npm run build` | Build the core, CLI, and provider workspaces that expose build scripts |
 | `npm run dev -- <path>` | Run the local StackForge CLI and generate a project |
 | `npm run create -- <path>` | Alias for running the local creation CLI |
-| `npm test` | Run tests exposed by workspace packages |
+| `npm test` | Run core, CLI, built-in integration, and legacy compatibility tests |
+| `npm run test:unit` | Run core and CLI tests |
+| `npm run test:integration` | Run integration package tests |
+| `npm run test:generated` | Run generated-project tests; real generation is opt-in through `STACKFORGE_RUN_GENERATED_SMOKE=1` |
+| `npm run test:docker` | Validate generated Compose configuration when Docker is available |
+| `npm run test:all` | Build and run the default test tiers |
 
 ## Current MVP Limitations
 
-StackForge is under active development. The following areas are not yet complete across every provider combination:
+StackForge is under active development. Current limitations include:
 
-- Frontend-to-backend API wiring
-- Backend CORS configuration
-- Database drivers, ORMs, and generated connection code
-- Unified Docker Compose generation for the complete selected stack
-- Central dependency installation and deduplication
+- Generated-project builds are sampled across provider families rather than running all 27 expensive combinations in the default test job
+- Docker Compose configuration is validated, but container-image builds and full container startup are not part of the default suite
+- Supabase is remote infrastructure and is therefore not started by generated Compose output
+- Spring Boot + Supabase uses an explicit REST-client approach rather than claiming a special Spring persistence layer
+- Spring generated builds require Java 21 and Maven in the test environment
+- FastAPI dependency installation requires `uv`; when it is unavailable, the summary reports the manual setup instead of claiming installation succeeded
 - Execution of provider-specific prompt definitions
 - Dynamic third-party provider discovery
 - Transactional cleanup after a failed generation
-- A complete provider-combination test matrix
 - npm publishing for `create-stackforge`
 
 These are implementation priorities, not hidden limitations. Contributions and focused pull requests are welcome.
 
 ## Development Priorities
 
-### 1. Golden full-stack path
+### 1. Broaden generated-build validation
 
-Create one fully connected and tested reference stack:
+Promote more of the 27 integrated combinations from fast source-shape tests to real generated-project builds.
 
-```text
-Next.js + Express + PostgreSQL + Docker
-```
+### 2. Container validation
 
-The generated project should:
+Add slower opt-in jobs for `docker compose build` and representative service startup without slowing down the default unit suite.
 
-- Install successfully
-- Build successfully
-- Connect the frontend to the backend
-- Connect the backend to PostgreSQL
-- Provide environment templates
-- Run with local commands
-- Run through one Docker Compose command
-- Print accurate completion instructions
+### 3. Provider polish
 
-### 2. Provider completion
+Move Spring Boot scaffolding to a richer Initializr-compatible workflow, strengthen Python environment bootstrapping, and add provider-specific configuration prompts.
 
-Make each advertised frontend, backend, and database selection independently runnable and documented.
-
-### 3. Shared generation contributions
-
-Introduce shared models for:
-
-- Environment variables
-- Dependencies
-- Docker Compose services
-- Runtime instructions
-- Generated component summaries
-
-This will allow providers to collaborate instead of overwriting shared files.
-
-### 4. Reliability
+### 4. Reliability and publishing
 
 Add:
 
-- Unit tests
-- Generated-project smoke tests
 - CI build matrices
-- Destination conflict checks
 - Failure cleanup
-- Reproducible framework version handling
+- npm publishing and provenance
 
 ## Roadmap
 
@@ -570,7 +649,7 @@ Never commit real credentials, API keys, service-role keys, database passwords, 
 
 StackForge is currently in **MVP development**.
 
-The provider architecture, core generation engine, registry, dynamic module loader, Clack wizard, and initial built-in providers are implemented. The current focus is making provider combinations collaborate as one connected application and improving the generation completion experience.
+The provider architecture, phase-ordered generation engine, shared contribution accumulators, Clack wizard, nine application connectors, nine database connectors, and all 27 composable full-stack combinations are implemented. The current focus is broadening real generated-build and container validation before describing every combination as production-ready.
 
 ## License
 

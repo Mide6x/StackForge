@@ -19,7 +19,6 @@ const provider: StackForgeProvider = {
   },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
-    await writeText(context.rootDirectory, ".env.example", "SUPABASE_URL=\nSUPABASE_ANON_KEY=\nSUPABASE_SERVICE_ROLE_KEY=\nJWT_SECRET=\n");
     await writeText(context.rootDirectory, "supabase/README.md", "# Supabase\n\nCreate a Supabase project, then add its public URL and anonymous key to `.env`. Never commit real credentials.\n");
   } },
 };

@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import type {
+  DependencyManager,
   GeneratedComponent,
   GenerationResult,
   GenerationContext,
@@ -11,7 +12,13 @@ import type {
   StackForgeIntegration,
   StackForgeProvider,
 } from "./contracts.js";
+import { DefaultGenerationResultBuilder } from "./accumulators/result.js";
 import { writeText } from "./files.js";
+import {
+  createIntegrationRuntime,
+  integrationPhases,
+  matchingIntegrations,
+} from "./integration-runner.js";
 
 export class GenerationFailure extends Error {
   constructor(
@@ -43,10 +50,11 @@ export class DefaultGenerationEngine implements GenerationEngine {
     });
 
     this.validate(providers, context);
+    const integrations = matchingIntegrations(this.integrations, context.selection);
     await mkdir(context.rootDirectory, { recursive: true });
     await this.prepareDirectories(context);
     const completedSteps: string[] = [];
-    const result = this.createResult(context, providers);
+    const initialResult = this.createResult(context, providers);
 
     try {
       for (const provider of providers) {
@@ -56,25 +64,93 @@ export class DefaultGenerationEngine implements GenerationEngine {
         completedSteps.push(step);
       }
 
-      await this.runStep("Shared project files", () => this.writeSharedFiles(context));
+      await this.runStep("Shared project files", () => this.writeBaseFiles(context));
       completedSteps.push("Shared project files");
 
-      for (const integration of this.matchingIntegrations(context)) {
-        const step = `${integration.metadata.name} integration`;
-        context.log(`Connecting ${integration.metadata.name}...`);
-        await this.runStep(step, async () => {
-          await integration.integrate(context);
-          await integration.augmentResult?.(result, context);
-        });
-        completedSteps.push(step);
+      const legacyIntegrations = integrations.filter((integration) => integration.integrate);
+      if (legacyIntegrations.length > 0) {
+        const legacyResult = initialResult;
+        await writeText(context.rootDirectory, ".env.example", "JWT_SECRET=\n");
+        for (const integration of legacyIntegrations) {
+          const step = `${integration.metadata.name} integration`;
+          context.log(`Connecting ${integration.metadata.name}...`);
+          await this.runStep(step, async () => {
+            await integration.integrate!(context);
+            await integration.augmentResult?.(legacyResult, context);
+          });
+          completedSteps.push(step);
+        }
+        await this.runProviderHooks(providers, context, completedSteps);
+        legacyResult.completedSteps = completedSteps;
+        return legacyResult;
       }
 
-      for (const provider of providers.flatMap((provider) => provider.postInstallHooks ?? [])) {
-        const step = provider.name;
-        context.log(`Running ${provider.name}...`);
-        await this.runStep(step, () => provider.run(context));
-        completedSteps.push(step);
+      const providerFiles = await this.listGeneratedFiles(context.rootDirectory);
+      const builder = new DefaultGenerationResultBuilder(initialResult);
+      const runtime = createIntegrationRuntime(context, builder, providerFiles);
+      this.seedCoreContributions(runtime, context);
+
+      for (const phase of integrationPhases) {
+        for (const integration of integrations.filter((item) => item.phase === phase)) {
+          const step = `${integration.metadata.name} integration`;
+          context.log(`Connecting ${integration.metadata.name}...`);
+          await this.runStep(step, () => integration.apply!(runtime.contextFor(integration)));
+          builder.addAppliedIntegration(integration.metadata.id);
+          completedSteps.push(step);
+        }
       }
+
+      const dependencyGroups = await this.runStepWithResult(
+        "Dependency manifest updates",
+        () => runtime.dependencies.apply(context),
+      );
+      completedSteps.push("Dependency manifest updates");
+
+      const externallyInstalledTargets = await this.runProviderHooks(
+        providers,
+        context,
+        completedSteps,
+      );
+      const outcomes = await this.runStepWithResult(
+        "Dependency installation",
+        () => runtime.dependencies.install(context, dependencyGroups, externallyInstalledTargets),
+      );
+      for (const outcome of outcomes) {
+        builder.addDependencyOutcome(outcome);
+        if (outcome.status === "skipped") {
+          const command = outcome.command?.join(" ") ?? `${outcome.manager} install`;
+          builder.addWarning(outcome.reason ?? `${command} was skipped.`);
+          builder.addManualStep(
+            `install:${outcome.manager}:${outcome.directory}`,
+            `Run \`${command}\` in ${outcome.directory}.`,
+          );
+        }
+      }
+      completedSteps.push("Dependency installation");
+
+      const environmentFiles = await this.runStepWithResult(
+        "Environment finalization",
+        () => runtime.environment.finalize(context),
+      );
+      environmentFiles.forEach((path) => builder.addEnvironmentFile(path));
+      completedSteps.push("Environment finalization");
+
+      await this.runStep("Documentation finalization", async () => {
+        await runtime.documentation.finalize(context);
+      });
+      completedSteps.push("Documentation finalization");
+
+      const docker = await this.runStepWithResult(
+        "Docker Compose finalization",
+        () => runtime.compose.finalize(context),
+      );
+      if (docker) builder.setDocker(docker);
+      completedSteps.push("Docker Compose finalization");
+
+      await this.runStep("Generated output validation", () =>
+        this.validateGeneratedOutput(context, initialResult.components, environmentFiles, docker?.composeFile));
+      completedSteps.push("Generated output validation");
+      return builder.build(completedSteps);
     } catch (error) {
       const failedStep = error instanceof StepFailure ? error.step : "Project generation";
       throw new GenerationFailure(
@@ -87,14 +163,19 @@ export class DefaultGenerationEngine implements GenerationEngine {
         { cause: error },
       );
     }
-
-    result.completedSteps = completedSteps;
-    return result;
   }
 
   private async runStep(step: string, action: () => Promise<void>): Promise<void> {
     try {
       await action();
+    } catch (error) {
+      throw new StepFailure(step, error);
+    }
+  }
+
+  private async runStepWithResult<T>(step: string, action: () => Promise<T>): Promise<T> {
+    try {
+      return await action();
     } catch (error) {
       throw new StepFailure(step, error);
     }
@@ -106,27 +187,14 @@ export class DefaultGenerationEngine implements GenerationEngine {
     const dependenciesInstalled = installableComponents.every(
       (component) => component.runtime?.dependenciesInstalled !== false,
     );
-    const dockerSelected = context.selection.docker;
-    const databaseService = context.selection.providerIds.includes("postgres")
-      ? "postgres"
-      : context.selection.providerIds.includes("mongodb")
-        ? "mongodb"
-        : undefined;
 
     return {
       projectName: context.projectName,
       rootDirectory: context.rootDirectory,
       components,
       dependenciesInstalled,
-      docker: dockerSelected
-        ? {
-          enabled: true,
-          composeFile: databaseService ? join(context.rootDirectory, "docker-compose.yml") : undefined,
-          startsFullStack: false,
-          command: databaseService ? [`docker compose up ${databaseService}`] : undefined,
-        }
-        : undefined,
-      environmentFiles: [join(context.rootDirectory, ".env.example")],
+      docker: undefined,
+      environmentFiles: [],
       warnings: [],
       completedSteps: [],
     };
@@ -152,14 +220,6 @@ export class DefaultGenerationEngine implements GenerationEngine {
     if (category === "frontend") return context.directories.frontend ?? "frontend";
     if (category === "backend") return context.directories.backend ?? "backend";
     return ".";
-  }
-
-  private matchingIntegrations(context: GenerationContext): StackForgeIntegration[] {
-    const selected = new Set(context.selection.providerIds);
-    return this.integrations.filter((integration) => {
-      const hasRequiredProviders = integration.metadata.providerIds.every((id) => selected.has(id));
-      return hasRequiredProviders && (integration.isApplicable?.(context.selection) ?? true);
-    });
   }
 
   private validate(providers: StackForgeProvider[], context: GenerationContext): void {
@@ -279,15 +339,11 @@ export class DefaultGenerationEngine implements GenerationEngine {
     return [...conflicts];
   }
 
-  private async writeSharedFiles(context: GenerationContext): Promise<void> {
-    const isFullStack = context.selection.projectType === "full-stack";
-    const directories = isFullStack ? "- `frontend/` contains the client\n- `backend/` contains the server\n" : "";
+  private async writeBaseFiles(context: GenerationContext): Promise<void> {
     await Promise.all([
       writeText(context.rootDirectory, ".gitignore", "node_modules/\ndist/\n.env\n.env.local\n__pycache__/\n*.py[cod]\ntarget/\n.idea/\n.DS_Store\n"),
       writeText(context.rootDirectory, ".editorconfig", "root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\ninsert_final_newline = true\nindent_style = space\nindent_size = 2\n"),
-      writeText(context.rootDirectory, "README.md", `# ${context.projectName}\n\nGenerated by StackForge.\n\n## Structure\n\n${directories}\n## Getting started\n\nSee the README files inside each generated application.\n`),
     ]);
-    await writeText(context.rootDirectory, ".env.example", "JWT_SECRET=\n");
   }
 
   private async prepareDirectories(context: GenerationContext): Promise<void> {
@@ -297,6 +353,98 @@ export class DefaultGenerationEngine implements GenerationEngine {
       mkdir(join(context.rootDirectory, context.directories.frontend ?? "frontend"), { recursive: true }),
       mkdir(join(context.rootDirectory, context.directories.backend ?? "backend"), { recursive: true }),
     ]);
+  }
+
+  private seedCoreContributions(
+    runtime: ReturnType<typeof createIntegrationRuntime>,
+    context: GenerationContext,
+  ): void {
+    const coreEnvironment = runtime.environment.scoped("stackforge-core");
+    if (context.selection.projectType !== "frontend-only") {
+      coreEnvironment.add({
+        name: "JWT_SECRET",
+        exampleValue: "",
+        description: "Replace this value before using authentication in production.",
+        section: "Application",
+        targets: ["root"],
+        sensitive: true,
+      });
+    }
+
+    const structure = context.selection.projectType === "full-stack"
+      ? "- `frontend/` contains the client.\n- `backend/` contains the API."
+      : "The selected application is generated in this directory.";
+    runtime.documentation.scoped("stackforge-core").add({
+      id: "structure",
+      title: "Structure",
+      content: structure,
+      order: 10,
+    });
+  }
+
+  private async runProviderHooks(
+    providers: StackForgeProvider[],
+    context: GenerationContext,
+    completedSteps: string[],
+  ): Promise<Set<string>> {
+    const installed = new Set<string>();
+    for (const provider of providers) {
+      for (const hook of provider.postInstallHooks ?? []) {
+        const step = hook.name;
+        context.log(`Running ${hook.name}...`);
+        await this.runStep(step, () => hook.run(context));
+        completedSteps.push(step);
+        const manager = this.managerForProvider(provider);
+        if (manager && (provider.metadata.category === "frontend" || provider.metadata.category === "backend")) {
+          installed.add(`${manager}:${provider.metadata.category}`);
+        }
+      }
+    }
+    return installed;
+  }
+
+  private managerForProvider(provider: StackForgeProvider): DependencyManager | undefined {
+    if (provider.metadata.id === "express" || provider.metadata.category === "frontend") return "npm";
+    if (provider.metadata.id === "fastapi") return "python";
+    if (provider.metadata.id === "springboot") return "maven";
+    return undefined;
+  }
+
+  private async listGeneratedFiles(directory: string): Promise<Set<string>> {
+    const files = new Set<string>();
+    const ignoredDirectories = new Set([".git", ".next", "dist", "node_modules", "target"]);
+    const visit = async (current: string): Promise<void> => {
+      const entries = await readdir(current, { withFileTypes: true });
+      for (const entry of entries) {
+        const path = join(current, entry.name);
+        if (entry.isDirectory()) {
+          if (ignoredDirectories.has(entry.name)) continue;
+          await visit(path);
+        } else if (entry.isFile()) {
+          files.add(path);
+        }
+      }
+    };
+    await visit(directory);
+    return files;
+  }
+
+  private async validateGeneratedOutput(
+    context: GenerationContext,
+    components: GeneratedComponent[],
+    environmentFiles: string[],
+    composeFile?: string,
+  ): Promise<void> {
+    for (const component of components.filter((item) => item.category !== "database")) {
+      const info = await stat(component.directory);
+      if (!info.isDirectory()) {
+        throw new Error(`Generated component directory is missing: ${component.directory}`);
+      }
+    }
+    for (const path of [...environmentFiles, ...(composeFile ? [composeFile] : [])]) {
+      await access(path, constants.F_OK);
+    }
+    await access(join(context.rootDirectory, "README.md"), constants.F_OK);
   }
 }
 

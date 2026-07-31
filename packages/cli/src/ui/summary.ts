@@ -59,14 +59,22 @@ function installCommandBlock(
   ]);
 }
 
+function exampleTarget(examplePath: string): string {
+  return examplePath.endsWith(".example")
+    ? examplePath.slice(0, -".example".length)
+    : `${examplePath}.local`;
+}
+
 function formatEnvironmentFiles(result: GenerationResult, invocationDirectory: string): string[] {
   if (result.environmentFiles.length === 1) {
+    const source = toRelativePath(invocationDirectory, result.environmentFiles[0]!);
+    const target = toRelativePath(invocationDirectory, exampleTarget(result.environmentFiles[0]!));
     return [
       "Environment setup required",
       "",
       "1. Copy the example file:",
       "",
-      `   cp ${toRelativePath(invocationDirectory, result.environmentFiles[0]!)} .env`,
+      `   cp ${source} ${target}`,
       "",
       "2. Add your credentials.",
       "",
@@ -139,14 +147,15 @@ export function formatGenerationSummary(result: GenerationResult, invocationDire
 
   if (database) {
     lines.push("", "Database", `  ${database.name}`);
-    if (database.providerId === "supabase") {
-      lines.push("  Complete Supabase setup:");
-      const notes = database.runtime?.notes ?? [];
-      notes.forEach((note, index) => lines.push(`  ${index + 1}. ${note}`));
+    const setupSteps = result.database?.setupSteps ?? database.runtime?.notes ?? [];
+    if (setupSteps.length > 0) {
+      lines.push("  Setup:");
+      setupSteps.forEach((note, index) => lines.push(`  ${index + 1}. ${note}`));
     } else {
-      const envTarget = result.environmentFiles[0];
-      if (envTarget) {
-        lines.push("  Connection value added to:", `    ${envTarget}`);
+      const databaseEnvironment = result.environmentFiles.find((path) =>
+        path.includes("/backend/")) ?? result.environmentFiles[0];
+      if (databaseEnvironment) {
+        lines.push("  Connection value added to:", `    ${databaseEnvironment}`);
       }
     }
   }
@@ -169,11 +178,22 @@ export function formatGenerationSummary(result: GenerationResult, invocationDire
 
   if (result.docker?.enabled && result.docker.command?.length) {
     lines.push("", "Docker");
-    lines.push(result.docker.startsFullStack ? "  Start everything:" : "  Start the database:");
+    lines.push(
+      result.docker.startsFullStack
+        ? "  Start everything:"
+        : result.database?.localServiceName
+          ? "  Start the database:"
+          : "  Start the generated containers:",
+    );
     lines.push("", formatCommandBlock([
       ...formatCdCommand(toRelativePath(invocationDirectory, result.rootDirectory)),
       ...result.docker.command,
     ]));
+  }
+
+  if (result.manualSteps?.length) {
+    lines.push("", "Manual steps");
+    result.manualSteps.forEach((step, index) => lines.push(`  ${index + 1}. ${step}`));
   }
 
   if (result.warnings.length > 0) {

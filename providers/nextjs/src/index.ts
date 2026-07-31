@@ -30,7 +30,30 @@ const provider: StackForgeProvider = {
       if (context.selection.projectType === "full-stack") {
         await rm(join(target, ".git"), { recursive: true, force: true });
       }
-      if (context.selection.docker) await writeText(target, "Dockerfile", "FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\nEXPOSE 3000\nCMD [\"npm\", \"run\", \"start\"]\n");
+      if (context.selection.docker) {
+        await writeText(target, "Dockerfile", `FROM node:22-alpine AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+COPY --from=build /app/next.config.* ./
+EXPOSE 3000
+CMD ["npm", "run", "start"]
+`);
+      }
     },
   },
 };

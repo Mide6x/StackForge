@@ -1,5 +1,5 @@
 import {
-  loadIntegration,
+  loadIntegrationModule,
   loadProvider,
   type StackForgeIntegration,
   type StackForgeProvider,
@@ -22,9 +22,9 @@ export async function loadProviders(): Promise<StackForgeProvider[]> {
 }
 
 const integrationPackages = [
-  "@stackforge/integration-nextjs-express-postgres",
+  "@stackforge/integrations-built-in",
 ] as const;
 
 export async function loadIntegrations(): Promise<StackForgeIntegration[]> {
-  return Promise.all(integrationPackages.map(loadIntegration));
+  return (await Promise.all(integrationPackages.map(loadIntegrationModule))).flat();
 }
