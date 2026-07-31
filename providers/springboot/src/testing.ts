@@ -22,31 +22,31 @@ const testcontainersOption = {
 };
 function prefix(context: TestingGenerationContext): string { return context.selection.projectType === "full-stack" ? `${context.directories.backend ?? "backend"}/` : ""; }
 function hasDatabase(context: TestingGenerationContext): boolean { return context.selection.providerIds.some((id) => id === "postgres" || id === "mongodb" || id === "supabase"); }
-async function mockMvc(context: TestingGenerationContext): Promise<void> {
-  const root = prefix(context); const database = hasDatabase(context);
-  context.dependencies.add({ manager: "maven", target: "backend", groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test", scope: "test" });
-  const annotations = database
+export function renderMockMvcTest(database: boolean): string {
+  const frameworkImports = database
     ? `import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import static org.mockito.Mockito.doNothing;
-
-@WebMvcTest(HealthController.class)`
+`
     : `import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+`;
+  const databaseStaticImport = database ? "import static org.mockito.Mockito.doNothing;\n" : "";
+  const annotations = database
+    ? "@WebMvcTest(HealthController.class)"
+    : "@SpringBootTest\n@AutoConfigureMockMvc";
 
-@SpringBootTest
-@AutoConfigureMockMvc`;
-  await context.files.create(`${root}src/test/java/com/stackforge/backend/HealthControllerTest.java`, `package com.stackforge.backend;
+  return `package com.stackforge.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
-${annotations}
+${frameworkImports}
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+${databaseStaticImport}import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+${annotations}
 class HealthControllerTest {
   @Autowired
   private MockMvc mockMvc;
@@ -58,7 +58,15 @@ ${database ? "    doNothing().when(database).check();\n" : ""}    mockMvc.perfor
         .andExpect(jsonPath("$.status").value("ok"));
   }
 }
-`);
+`;
+}
+async function mockMvc(context: TestingGenerationContext): Promise<void> {
+  const root = prefix(context); const database = hasDatabase(context);
+  context.dependencies.add({ manager: "maven", target: "backend", groupId: "org.springframework.boot", artifactId: "spring-boot-starter-test", scope: "test" });
+  await context.files.create(
+    `${root}src/test/java/com/stackforge/backend/HealthControllerTest.java`,
+    renderMockMvcTest(database),
+  );
   context.result.addTestSuite({ providerId: "springboot", component: "backend", optionId: mockMvcOption.id, name: mockMvcOption.name, directory: targetDirectory(context, "backend"), commands: mockMvcOption.commands });
 }
 async function testcontainers(context: TestingGenerationContext): Promise<void> {
