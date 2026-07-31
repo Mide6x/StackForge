@@ -658,19 +658,8 @@ Other roadmap items:
 
 ## Contributing
 
-StackForge is intended to be open and extensible.
-
-A contribution may include:
-
-- A new provider
-- A provider integration recipe
-- Improvements to the CLI experience
-- Compatibility rules
-- Generation tests
-- Documentation
-- Bug fixes
-
-Recommended workflow:
+StackForge accepts outside contributions through pull requests. Start with the
+development checks below:
 
 ```bash
 git clone https://github.com/Mide6x/StackForge.git
@@ -680,18 +669,43 @@ npm run build
 npm test
 ```
 
-Then create a focused branch and pull request describing:
+The `main` branch is protected. Pull requests must pass CI, resolve review
+conversations, and receive the required review before an official merge by
+`@Mide6x`.
 
-- What changed
-- Why the change is needed
-- Which provider combinations were tested
-- Any generated output or commands used for validation
+Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the development workflow,
+testing expectations, contribution licence terms, and pull-request guidance.
+
+## Repository Workflow
+
+```text
+main
+  stable and release-ready
+  protected from direct pushes, force pushes, and deletion
+
+feature branches and forks
+  focused implementation work
+  pull requests targeting main
+
+pull requests
+  build and test checks
+  CODEOWNER review
+  resolved conversations
+  squash merge by Mide6x
+```
+
+Public contributors do not need write access to the official repository.
+Fork-based pull requests are the normal contribution path.
 
 ## Security and Generated Secrets
 
 StackForge should only generate placeholder environment values.
 
 Never commit real credentials, API keys, service-role keys, database passwords, or JWT secrets. Generated projects should copy `.env.example` to `.env` and keep `.env` ignored by Git.
+
+Report exploitable vulnerabilities privately as described in
+[`SECURITY.md`](./SECURITY.md). Do not include secrets or personal data in
+issues, pull requests, or logs.
 
 ## Status
 
@@ -701,4 +715,21 @@ The provider architecture, phase-ordered generation engine, shared contribution 
 
 ## License
 
-This repository is currently distributed under the license included in [`LICENSE`](./LICENSE).
+StackForge is licensed under the Mozilla Public License 2.0. See
+[`LICENSE`](./LICENSE) for the complete terms.
+
+In brief, MPL 2.0 permits use, study, modification, and distribution.
+Distributed modifications to MPL-covered files must remain available under MPL
+2.0, and copyright and licence notices must be preserved. Separate files may be
+licensed differently where MPL 2.0 permits. This summary is not legal advice.
+
+Copyright © 2026 Olumide Adewole. See [`NOTICE`](./NOTICE).
+
+## Branding
+
+“StackForge” and the StackForge logo are trademarks of Olumide Adewole. The
+source-code licence does not grant permission to present unofficial forks or
+modified distributions as official StackForge releases. Reasonable, truthful
+references and clearly named forks are permitted.
+
+See [`TRADEMARKS.md`](./TRADEMARKS.md) for the complete branding policy.

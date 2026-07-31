@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: MPL-2.0
 import { cancel, intro, outro, spinner } from "@clack/prompts";
 import { DefaultGenerationEngine, GenerationFailure, InMemoryProviderRegistry, runCommand } from "@stackforge/core";
 import { loadIntegrations, loadProviders } from "./provider-loader.js";

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Feature request
+description: Suggest an improvement to StackForge.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem being solved
+      description: What makes the current workflow difficult or incomplete?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Describe the user-facing result you would like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected
+    attributes:
+      label: Providers or integrations affected
+      placeholder: Next.js, Express, PostgreSQL, CLI, Core
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include workarounds or other designs you considered.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be interested in contributing this change.

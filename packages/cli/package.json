@@ -1,6 +1,7 @@
 {
   "name": "create-stackforge",
   "version": "0.1.0",
+  "license": "MPL-2.0",
   "description": "Create modern full-stack projects with StackForge",
   "type": "module",
   "bin": {

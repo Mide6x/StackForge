@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { join } from "node:path";
 import type {
   ComposeAccumulator,

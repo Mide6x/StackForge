@@ -19,6 +19,7 @@
     "test:generated:e2e": "node --import tsx --test tests/generated/*e2e*.test.ts",
     "test:docker": "node --import tsx --test tests/docker/*.test.ts",
     "test:all": "npm run build && npm test && npm run test:generated && npm run test:docker",
+    "validate:governance": "node scripts/validate-governance.mjs",
     "create": "npm run dev --workspace=create-stackforge"
   },
   "engines": {

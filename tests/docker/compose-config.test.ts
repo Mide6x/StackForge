@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";

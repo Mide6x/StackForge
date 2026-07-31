@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { cancel, confirm, isCancel, multiselect, select, text } from "@clack/prompts";
 import type {
   ProjectType,

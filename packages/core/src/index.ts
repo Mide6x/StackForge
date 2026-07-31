@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export * from "./contracts.js";
 export * from "./accumulators/compose.js";
 export * from "./accumulators/dependencies.js";

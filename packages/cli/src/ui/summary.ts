@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { relative } from "node:path";
 import type {
   GeneratedComponent,
