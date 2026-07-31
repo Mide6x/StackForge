@@ -13,7 +13,7 @@
     "build": "npm run build --workspace=@stackforge/core && npm run build --workspaces --if-present",
     "dev": "npm run dev --workspace=create-stackforge",
     "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "npm test --workspace=@stackforge/core && npm test --workspace=create-stackforge",
+    "test:unit": "npm test --workspace=@stackforge/core && npm test --workspace=create-stackforge && npm test --workspace=@stackforge/provider-springboot",
     "test:integration": "npm test --workspace=@stackforge/integrations-built-in && npm test --workspace=@stackforge/integration-nextjs-express-postgres",
     "test:generated": "node --import tsx --test tests/generated/*.test.ts",
     "test:generated:e2e": "node --import tsx --test tests/generated/*e2e*.test.ts",
