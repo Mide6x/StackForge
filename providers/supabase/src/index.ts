@@ -2,7 +2,21 @@ import type { StackForgeProvider } from "@stackforge/core";
 import { writeText } from "@stackforge/core";
 
 const provider: StackForgeProvider = {
-  metadata: { id: "supabase", name: "Supabase", category: "database", description: "Hosted Postgres, authentication, and storage platform", version: "latest", tags: ["postgres", "backend-as-a-service"] },
+  metadata: {
+    id: "supabase",
+    name: "Supabase",
+    category: "database",
+    description: "Hosted Postgres, authentication, and storage platform",
+    version: "latest",
+    tags: ["postgres", "backend-as-a-service"],
+    runtime: {
+      notes: [
+        "Create or select a Supabase project.",
+        "Copy the project URL and keys.",
+        "Add them to .env.",
+      ],
+    },
+  },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
     await writeText(context.rootDirectory, ".env.example", "SUPABASE_URL=\nSUPABASE_ANON_KEY=\nSUPABASE_SERVICE_ROLE_KEY=\nJWT_SECRET=\n");

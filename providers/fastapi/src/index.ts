@@ -2,7 +2,22 @@ import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
 
 const provider: StackForgeProvider = {
-  metadata: { id: "fastapi", name: "FastAPI", category: "backend", description: "Modern Python API framework", version: "latest", supportedLanguages: ["python"], tags: ["python", "api"] },
+  metadata: {
+    id: "fastapi",
+    name: "FastAPI",
+    category: "backend",
+    description: "Modern Python API framework",
+    version: "latest",
+    supportedLanguages: ["python"],
+    tags: ["python", "api"],
+    runtime: {
+      developmentCommand: ["uv run uvicorn app.main:app --reload"],
+      localUrl: "http://localhost:8000",
+      healthCheckUrl: "http://localhost:8000/health",
+      installCommand: ["uv sync"],
+      dependenciesInstalled: false,
+    },
+  },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
     const target = targetDirectory(context, "backend");

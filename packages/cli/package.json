@@ -14,11 +14,13 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "test": "node --import tsx --test src/*.test.ts src/**/*.test.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "@stackforge/core": "0.1.0",
+    "@stackforge/integration-nextjs-express-postgres": "0.1.0",
     "@stackforge/provider-express": "0.1.0",
     "@stackforge/provider-fastapi": "0.1.0",
     "@stackforge/provider-mongodb": "0.1.0",

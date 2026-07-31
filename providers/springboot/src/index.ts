@@ -2,7 +2,24 @@ import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
 
 const provider: StackForgeProvider = {
-  metadata: { id: "springboot", name: "Spring Boot", category: "backend", description: "Production-ready Java application framework", version: "3.4", supportedLanguages: ["java"], tags: ["java", "api"] },
+  metadata: {
+    id: "springboot",
+    name: "Spring Boot",
+    category: "backend",
+    description: "Production-ready Java application framework",
+    version: "3.4",
+    supportedLanguages: ["java"],
+    tags: ["java", "api"],
+    runtime: {
+      developmentCommand: ["mvn spring-boot:run"],
+      productionCommand: ["mvn package", "java -jar target/*.jar"],
+      localUrl: "http://localhost:8080",
+      healthCheckUrl: "http://localhost:8080/health",
+      installCommand: ["mvn dependency:resolve"],
+      dependenciesInstalled: false,
+      notes: ["This MVP generates a Maven project without a Maven wrapper yet."],
+    },
+  },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
     const target = targetDirectory(context, "backend");

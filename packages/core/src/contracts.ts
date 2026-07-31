@@ -16,6 +16,7 @@ export interface ProviderMetadata {
   version?: string;
   supportedLanguages?: SupportedLanguage[];
   tags?: string[];
+  runtime?: ProviderRuntimeInstructions;
 }
 
 export interface ProviderSelection {
@@ -63,6 +64,16 @@ export interface GenerationContext {
   run(command: string, args: string[], cwd: string): Promise<void>;
 }
 
+export interface ProviderRuntimeInstructions {
+  installCommand?: string[];
+  developmentCommand?: string[];
+  productionCommand?: string[];
+  localUrl?: string;
+  healthCheckUrl?: string;
+  notes?: string[];
+  dependenciesInstalled?: boolean;
+}
+
 export interface DependencyDeclaration {
   name: string;
   version: string;
@@ -95,5 +106,46 @@ export interface ProviderRegistry {
 }
 
 export interface GenerationEngine {
-  generate(context: GenerationContext): Promise<void>;
+  generate(context: GenerationContext): Promise<GenerationResult>;
+}
+
+export interface IntegrationMetadata {
+  id: string;
+  name: string;
+  description: string;
+  providerIds: string[];
+}
+
+export interface StackForgeIntegration {
+  metadata: IntegrationMetadata;
+  isApplicable?(selection: ProviderSelection): boolean;
+  integrate(context: GenerationContext): Promise<void>;
+  augmentResult?(result: GenerationResult, context: GenerationContext): Promise<void> | void;
+}
+
+export interface GeneratedComponent {
+  providerId: string;
+  name: string;
+  category: ProviderCategory;
+  directory: string;
+  relativeDirectory: string;
+  runtime?: ProviderRuntimeInstructions;
+}
+
+export interface DockerGenerationResult {
+  enabled: boolean;
+  composeFile?: string;
+  startsFullStack: boolean;
+  command?: string[];
+}
+
+export interface GenerationResult {
+  projectName: string;
+  rootDirectory: string;
+  components: GeneratedComponent[];
+  dependenciesInstalled: boolean;
+  docker?: DockerGenerationResult;
+  environmentFiles: string[];
+  warnings: string[];
+  completedSteps: string[];
 }

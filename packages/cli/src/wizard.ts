@@ -1,4 +1,3 @@
-import { basename, resolve } from "node:path";
 import { cancel, confirm, isCancel, select, text } from "@clack/prompts";
 import type {
   ProjectType,
@@ -7,6 +6,12 @@ import type {
   StackForgeProvider,
   SupportedLanguage,
 } from "@stackforge/core";
+import {
+  assertDestinationWritable,
+  ensureDestinationApproved,
+  inspectDestination,
+  resolveDestination,
+} from "./destination.js";
 
 type Choice = {
   value: string;
@@ -65,6 +70,7 @@ export async function runWizard(
   providers: StackForgeProvider[],
   initialName?: string,
 ): Promise<{ selection: ProviderSelection; rootDirectory: string; projectName: string }> {
+  const invocationDirectory = process.env.INIT_CWD ?? process.cwd();
   const projectType = ensurePromptValue(await select({
     message: "What would you like to create?",
     options: [
@@ -119,29 +125,59 @@ export async function runWizard(
     initialValue: true,
   }) as boolean | symbol);
 
-  const askedName = initialName
+  const targetInput = initialName
     ? initialName
-    : ensurePromptValue(await text({
-      message: "Project name",
-      placeholder: "my-app",
-      validate(value) {
-        const trimmed = (value ?? "").trim();
-        const candidate = basename(trimmed);
-
-        if (!trimmed) return "Project name is required.";
-        if (candidate === "." || candidate === "..") return "Please provide a valid project name.";
-      },
-    }) as string | symbol);
-
-  const targetInput = askedName.trim();
-  const projectName = basename(targetInput);
-  if (!projectName || projectName === "." || projectName === "..") {
-    throw new Error("Please provide a valid project name.");
-  }
+    : await askForDestination();
+  const destination = resolveDestination(invocationDirectory, targetInput);
+  await assertDestinationWritable(destination.rootDirectory);
+  await confirmDestinationSafety(destination.rootDirectory);
 
   return {
-    projectName,
-    rootDirectory: resolve(process.cwd(), targetInput),
+    projectName: destination.projectName,
+    rootDirectory: destination.rootDirectory,
     selection: { projectType, providerIds, frontendLanguage, backendLanguage, docker },
   };
+}
+
+async function confirmDestinationSafety(rootDirectory: string): Promise<void> {
+  const inspection = await inspectDestination(rootDirectory);
+  await ensureDestinationApproved(
+    inspection,
+    async () => ensurePromptValue(await select({
+      message: "The destination folder is not empty.",
+      options: [
+        { value: "cancel", label: "Cancel" },
+        { value: "continue", label: "Continue without overwriting existing files" },
+      ],
+    }) as "cancel" | "continue" | symbol),
+    () => {
+      cancel("Project creation cancelled.");
+      process.exit(0);
+    },
+  );
+}
+
+async function askForDestination(): Promise<string> {
+  const destinationMode = ensurePromptValue(await select({
+    message: "Where should StackForge create the project?",
+    options: [
+      { value: "new-directory", label: "Create a new project folder" },
+      { value: "current-directory", label: "Use the current folder" },
+    ],
+  }) as "new-directory" | "current-directory" | symbol);
+
+  if (destinationMode === "current-directory") {
+    return ".";
+  }
+
+  return ensurePromptValue(await text({
+    message: "What is your project name?",
+    placeholder: "my-app",
+    validate(value) {
+      const trimmed = (value ?? "").trim();
+
+      if (!trimmed) return "Project name is required.";
+      if (trimmed === "." || trimmed === "..") return "Please provide a valid project name.";
+    },
+  }) as string | symbol);
 }

@@ -2,7 +2,22 @@ import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
 
 const provider: StackForgeProvider = {
-  metadata: { id: "express", name: "Express", category: "backend", description: "Minimal Node.js web server", version: "5", supportedLanguages: ["typescript", "javascript"], tags: ["node", "api"] },
+  metadata: {
+    id: "express",
+    name: "Express",
+    category: "backend",
+    description: "Minimal Node.js web server",
+    version: "5",
+    supportedLanguages: ["typescript", "javascript"],
+    tags: ["node", "api"],
+    runtime: {
+      developmentCommand: ["npm run dev"],
+      productionCommand: ["npm run build", "npm run start"],
+      localUrl: "http://localhost:3001",
+      healthCheckUrl: "http://localhost:3001/health",
+      dependenciesInstalled: true,
+    },
+  },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
     const target = targetDirectory(context, "backend");
@@ -13,6 +28,12 @@ const provider: StackForgeProvider = {
     if (context.selection.docker) await writeText(target, "Dockerfile", `FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\n${isTs ? "RUN npm run build\\n" : ""}EXPOSE 3001\nCMD ["npm", "run", "start"]\n`);
   } },
   getDependencies: () => [{ name: "express", version: "^5.1.0", type: "runtime" }],
+  postInstallHooks: [{
+    name: "Installing Express dependencies",
+    async run(context) {
+      await context.run("npm", ["install"], targetDirectory(context, "backend"));
+    },
+  }],
 };
 export default provider;
 export { provider };

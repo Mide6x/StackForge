@@ -2,7 +2,18 @@ import type { StackForgeProvider } from "@stackforge/core";
 import { writeText } from "@stackforge/core";
 
 const provider: StackForgeProvider = {
-  metadata: { id: "mongodb", name: "MongoDB", category: "database", description: "Document database", version: "8", tags: ["nosql", "document"] },
+  metadata: {
+    id: "mongodb",
+    name: "MongoDB",
+    category: "database",
+    description: "Document database",
+    version: "8",
+    tags: ["nosql", "document"],
+    runtime: {
+      localUrl: "mongodb://localhost:27017/app",
+      notes: ["Connection value is written to .env.example."],
+    },
+  },
   compatibility: { projectTypes: ["full-stack", "backend-only"] },
   generator: { async generate(context) {
     await writeText(context.rootDirectory, ".env.example", "MONGODB_URI=mongodb://localhost:27017/app\nJWT_SECRET=\n");
