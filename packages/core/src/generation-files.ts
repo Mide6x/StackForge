@@ -1,22 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import { access, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import type { GeneratedFileWriter } from "./contracts.js";
-
-function safePath(rootDirectory: string, relativePath: string): string {
-  if (!relativePath || isAbsolute(relativePath)) {
-    throw new Error(`Generated file path must be relative: "${relativePath}".`);
-  }
-  const normalized = normalize(relativePath);
-  const absolute = resolve(rootDirectory, normalized);
-  const fromRoot = relative(rootDirectory, absolute);
-  if (fromRoot === ".." || fromRoot.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) {
-    throw new Error(`Generated file path escapes the project root: "${relativePath}".`);
-  }
-  return absolute;
-}
+import { assertNoSymlinkEscape } from "./path-safety.js";
 
 export class DefaultGeneratedFileWriter {
   private readonly claims = new Map<string, string>();
@@ -35,7 +23,7 @@ export class DefaultGeneratedFileWriter {
   }
 
   private async create(owner: string, relativePath: string, content: string): Promise<void> {
-    const path = safePath(this.rootDirectory, relativePath);
+    const path = await assertNoSymlinkEscape(this.rootDirectory, relativePath);
     const claimed = this.claims.get(path);
     if (claimed) {
       throw new Error(`Generated file conflict at "${relativePath}": already claimed by ${claimed}.`);
@@ -57,7 +45,7 @@ export class DefaultGeneratedFileWriter {
     relativePath: string,
     content: string,
   ): Promise<void> {
-    const path = safePath(this.rootDirectory, relativePath);
+    const path = await assertNoSymlinkEscape(this.rootDirectory, relativePath);
     const claimed = this.claims.get(path);
     if (claimed && claimed !== owner) {
       throw new Error(
@@ -75,7 +63,7 @@ export class DefaultGeneratedFileWriter {
 
   private async exists(relativePath: string): Promise<boolean> {
     try {
-      await access(safePath(this.rootDirectory, relativePath), constants.F_OK);
+      await access(await assertNoSymlinkEscape(this.rootDirectory, relativePath), constants.F_OK);
       return true;
     } catch (error) {
       const nodeError = error as NodeJS.ErrnoException;

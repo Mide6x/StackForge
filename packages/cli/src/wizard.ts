@@ -76,7 +76,7 @@ export async function runWizard(
   integrations: StackForgeIntegration[],
   initialName?: string,
 ): Promise<{ selection: ProviderSelection; rootDirectory: string; projectName: string }> {
-  const invocationDirectory = process.env.INIT_CWD ?? process.cwd();
+  const invocationDirectory = process.cwd();
   const projectType = ensurePromptValue(await select({
     message: "What would you like to create?",
     options: [
@@ -144,7 +144,7 @@ export async function runWizard(
   const targetInput = initialName
     ? initialName
     : await askForDestination();
-  const destination = resolveDestination(invocationDirectory, targetInput);
+  const destination = await resolveDestination(invocationDirectory, targetInput);
   await assertDestinationWritable(destination.rootDirectory);
   await confirmDestinationSafety(destination.rootDirectory);
 

@@ -168,3 +168,17 @@ test("selected provider tests generate after scaffolding and merge scripts and d
     await rm(rootDirectory, { recursive: true, force: true });
   }
 });
+
+test("unsafe configured component directories are rejected", async () => {
+  const rootDirectory = await mkdtemp(join(tmpdir(), "stackforge-core-unsafe-dirs-"));
+  try {
+    const context = createContext(rootDirectory);
+    context.directories.frontend = "../frontend";
+    await assert.rejects(
+      createEngine().generate(context),
+      /frontend directory escapes the project root/i,
+    );
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});

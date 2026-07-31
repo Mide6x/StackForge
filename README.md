@@ -194,6 +194,11 @@ A nested relative path may also be supplied:
 npm run dev -- ./projects/my-app
 ```
 
+StackForge treats destination input as security-sensitive. The local CLI accepts
+project paths relative to the directory where the command is invoked and
+canonicalizes the approved root before generation begins. It does not follow a
+symlinked destination path out of that invocation directory.
+
 ### Use the current directory
 
 The local CLI supports:
@@ -211,6 +216,10 @@ npm create stackforge .
 When `.` is used, StackForge will generate directly inside the current directory and derive the project name from the directory name.
 
 Destination handling will protect existing files. StackForge will not silently overwrite a non-empty project directory.
+
+Absolute destinations and parent-directory escapes such as `../outside` are
+rejected by the CLI. Generated files, environment outputs, Compose files, and
+integration-created files are constrained to the approved project root.
 
 ### Existing-directory limitation
 
@@ -579,6 +588,20 @@ npm run test:docker
 ```
 
 The Docker suite skips clearly if the Docker CLI is unavailable. Compose configuration validation does not require starting containers.
+
+Destination-safety validation lives in the normal test suites. The core and CLI
+tests cover:
+
+- destination canonicalization inside the invocation directory
+- rejection of traversal and absolute destination input
+- rejection of unsafe frontend/backend directory configuration
+- rejection of writes through symlinked project paths
+- root-constrained managed deletion helpers
+- generated-file escape prevention
+
+CodeQL should only be added as a required merge check after a clean remote
+analysis has completed for the hardened destination-path branch or a merge
+candidate derived from it.
 
 ## Root Scripts
 

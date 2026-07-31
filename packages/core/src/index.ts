@@ -11,4 +11,5 @@ export * from "./files.js";
 export * from "./generation-files.js";
 export * from "./integration-runner.js";
 export * from "./loader.js";
+export * from "./path-safety.js";
 export * from "./registry.js";

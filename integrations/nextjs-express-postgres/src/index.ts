@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  removeManagedPath,
   targetDirectory,
   writeText,
   type GenerationContext,
@@ -324,7 +325,7 @@ export const integration: StackForgeIntegration = {
     ]);
 
     if (context.selection.docker) {
-      await rm(join(context.rootDirectory, "docker-compose.yml"), { force: true });
+      await removeManagedPath(context.rootDirectory, "docker-compose.yml");
       await Promise.all([
         writeText(context.rootDirectory, "compose.yaml", composeFile),
         writeText(frontendDirectory, "Dockerfile", frontendDockerfile),

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MPL-2.0
-import { join } from "node:path";
 import type {
   ComposeAccumulator,
   ComposeComponent,
@@ -8,6 +7,7 @@ import type {
   GenerationContext,
 } from "../contracts.js";
 import { writeText } from "../files.js";
+import { resolveInsideRoot } from "../path-safety.js";
 
 type OwnedService = {
   service: ComposeServiceContribution;
@@ -182,8 +182,8 @@ export class DefaultComposeAccumulator {
       );
     }
 
-    const composeFile = join(context.rootDirectory, "compose.yaml");
-    await writeText(composeFile, "", `${renderYaml(compose).join("\n")}\n`);
+    const composeFile = resolveInsideRoot(context.rootDirectory, "compose.yaml");
+    await writeText(context.rootDirectory, "compose.yaml", `${renderYaml(compose).join("\n")}\n`);
 
     const components = new Set(
       [...this.services.values()]

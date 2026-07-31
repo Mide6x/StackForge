@@ -7,6 +7,7 @@ import type {
   PackageScriptAccumulator,
   PackageScriptContribution,
 } from "../contracts.js";
+import { componentDirectory } from "../path-safety.js";
 
 type OwnedScript = {
   contribution: PackageScriptContribution;
@@ -14,13 +15,7 @@ type OwnedScript = {
 };
 
 function targetDirectory(context: GenerationContext, target: DependencyTarget): string {
-  if (context.selection.projectType !== "full-stack") return context.rootDirectory;
-  return join(
-    context.rootDirectory,
-    target === "frontend"
-      ? context.directories.frontend ?? "frontend"
-      : context.directories.backend ?? "backend",
-  );
+  return componentDirectory(context, target);
 }
 
 export class DefaultPackageScriptAccumulator {

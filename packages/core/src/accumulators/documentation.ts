@@ -6,6 +6,7 @@ import type {
   GenerationContext,
 } from "../contracts.js";
 import { writeText } from "../files.js";
+import { componentRelativeDirectory, resolveInsideRoot } from "../path-safety.js";
 
 type OwnedDocumentation = DocumentationContribution & {
   owner: string;
@@ -52,14 +53,9 @@ export class DefaultDocumentationAccumulator {
           || left.id.localeCompare(right.id));
       if (entries.length === 0) continue;
 
-      const directory = target === "root"
-        ? context.rootDirectory
-        : join(
-          context.rootDirectory,
-          target === "frontend"
-            ? context.directories.frontend ?? "frontend"
-            : context.directories.backend ?? "backend",
-        );
+      const relativePath = target === "root"
+        ? "README.md"
+        : join(componentRelativeDirectory(context, target), "README.md");
       const content = [
         `# ${target === "root" ? context.projectName : `${context.projectName} ${target}`}`,
         "",
@@ -73,9 +69,8 @@ export class DefaultDocumentationAccumulator {
         ]),
       ].join("\n");
 
-      const path = join(directory, "README.md");
-      await writeText(path, "", content);
-      written.push(path);
+      await writeText(context.rootDirectory, relativePath, content);
+      written.push(resolveInsideRoot(context.rootDirectory, relativePath));
     }
 
     return written;
