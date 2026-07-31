@@ -4,6 +4,7 @@ export * from "./accumulators/dependencies.js";
 export * from "./accumulators/documentation.js";
 export * from "./accumulators/environment.js";
 export * from "./accumulators/result.js";
+export * from "./accumulators/scripts.js";
 export * from "./engine.js";
 export * from "./files.js";
 export * from "./generation-files.js";

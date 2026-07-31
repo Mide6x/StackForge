@@ -1,5 +1,6 @@
 import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
+import { testing } from "./testing.js";
 
 const viteVersion = "7.1.3";
 
@@ -46,6 +47,7 @@ CMD ["nginx", "-g", "daemon off;"]
       await context.run("npm", ["install"], targetDirectory(context, "frontend"));
     },
   }],
+  testing,
 };
 export default provider;
 export { provider };

@@ -109,7 +109,11 @@ async function fixture(
     }, null, 2)}\n`);
     await providerFile(
       `${backendPrefix}src/index.${typeScript ? "ts" : "js"}`,
-      'import express from "express";\n',
+      'import { app } from "./app.js";\nvoid app;\n',
+    );
+    await providerFile(
+      `${backendPrefix}src/app.${typeScript ? "ts" : "js"}`,
+      'import express from "express";\nexport const app = express();\n',
     );
   } else if (backendId === "fastapi") {
     await providerFile(
@@ -190,7 +194,7 @@ function backendSourcePath(
   backendOnly = false,
 ): string {
   const prefix = backendOnly ? "" : "backend/";
-  if (backendId === "express") return `${prefix}src/index.${javaScript ? "js" : "ts"}`;
+  if (backendId === "express") return `${prefix}src/app.${javaScript ? "js" : "ts"}`;
   if (backendId === "fastapi") return `${prefix}app/main.py`;
   return `${prefix}src/main/java/com/stackforge/backend/Application.java`;
 }
@@ -460,6 +464,25 @@ test("integration applicability selects exactly one connector from each pair fam
   assert.deepEqual(
     selected.map((integration) => integration.metadata.id),
     ["react-fastapi", "fastapi-mongodb", "fullstack-compose", "backend-source-finalizer"],
+  );
+});
+
+test("the golden path exposes only its opt-in full-stack Playwright suite", () => {
+  const golden = matchingIntegrations(integrations, {
+    projectType: "full-stack",
+    providerIds: ["nextjs", "express", "postgres"],
+    frontendLanguage: "typescript",
+    backendLanguage: "typescript",
+    docker: false,
+  }).find((integration) => integration.metadata.id === "backend-source-finalizer");
+  assert.deepEqual(golden?.testing?.options.map((option) => option.id), ["fullstack-playwright-health"]);
+  assert.equal(
+    golden?.testing?.options[0]?.isAvailable?.({
+      projectType: "full-stack",
+      providerIds: ["react", "express", "postgres"],
+      docker: false,
+    }),
+    false,
   );
 });
 

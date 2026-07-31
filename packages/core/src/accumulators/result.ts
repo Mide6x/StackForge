@@ -2,6 +2,7 @@ import type {
   DatabaseResultDetails,
   DependencyInstallationOutcome,
   DockerGenerationResult,
+  GeneratedTestSuite,
   GenerationResult,
   GenerationResultBuilder,
   IntegrationConnectionResult,
@@ -17,6 +18,7 @@ export class DefaultGenerationResultBuilder implements GenerationResultBuilder {
   private readonly environmentFiles = new Set<string>();
   private readonly dependencyInstallations: DependencyInstallationOutcome[] = [];
   private readonly appliedIntegrations = new Set<string>();
+  private readonly testSuites = new Map<string, GeneratedTestSuite>();
   private connection?: IntegrationConnectionResult;
   private database?: DatabaseResultDetails;
   private docker?: DockerGenerationResult;
@@ -62,6 +64,15 @@ export class DefaultGenerationResultBuilder implements GenerationResultBuilder {
 
   addDependencyOutcome(outcome: DependencyInstallationOutcome): void {
     this.dependencyInstallations.push(structuredClone(outcome));
+  }
+
+  addTestSuite(suite: GeneratedTestSuite): void {
+    const key = `${suite.component}:${suite.providerId ?? suite.integrationId ?? "unknown"}:${suite.optionId}`;
+    const existing = this.testSuites.get(key);
+    if (existing && !same(existing, suite)) {
+      throw new Error(`Generated test-suite conflict for "${suite.optionId}".`);
+    }
+    this.testSuites.set(key, structuredClone(suite));
   }
 
   addAppliedIntegration(id: string): void {
@@ -114,6 +125,8 @@ export class DefaultGenerationResultBuilder implements GenerationResultBuilder {
           .map(([, value]) => value)
         : undefined,
       appliedIntegrations: [...this.appliedIntegrations].sort(),
+      testSuites: [...this.testSuites.values()].sort((left, right) =>
+        `${left.component}:${left.name}`.localeCompare(`${right.component}:${right.name}`)),
     };
   }
 }

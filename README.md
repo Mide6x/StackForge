@@ -121,6 +121,51 @@ Database dependencies and generated source are selected for Express, FastAPI, or
 
 The interactive interface is built with [Clack](https://github.com/bombshell-dev/clack) to provide accessible prompts, cancellation handling, spinners, and structured terminal output.
 
+## Optional Generated Tests
+
+StackForge never installs a test framework by default. During creation, it asks about tests only for the applications you selected: frontend-only projects receive frontend questions, backend-only projects receive backend questions, and full-stack projects receive separate frontend, backend, and optional full-stack end-to-end questions.
+
+```text
+◇ Add frontend tests?
+│ Yes
+│
+◇ Select frontend test coverage
+│ ◼ Vitest + React Testing Library
+│ ◻ Playwright
+│
+◇ Add backend tests?
+│ Yes
+│
+◇ Select backend test coverage
+│ ◼ Vitest + Supertest
+│
+◇ Add full-stack end-to-end tests?
+│ No
+```
+
+The wizard records selected option IDs only. Providers and integrations generate the dependencies, scripts, configuration, example tests, and runtime instructions after the selected stack has been connected.
+
+| Provider | Unit/component | API integration | Browser E2E |
+| --- | --- | --- | --- |
+| Next.js | Vitest + React Testing Library | — | Playwright |
+| React with Vite | Vitest + React Testing Library | — | Playwright |
+| Vue with Vite | Vitest + Vue Test Utils | — | Playwright |
+| Express | Vitest | Supertest | — |
+| FastAPI | pytest | HTTPX/TestClient | — |
+| Spring Boot | JUnit 5 | MockMvc, optional Testcontainers | — |
+
+Testcontainers is database integration testing, not browser end-to-end testing. It appears only when PostgreSQL or MongoDB is selected. The Next.js + Express + PostgreSQL stack also offers an opt-in full-stack Playwright health-flow test. Start PostgreSQL, Express, and Next.js first, then run its generated command. Browser suites require `npx playwright install` before their first run.
+
+Generated commands are shown only for selected suites. Typical Node commands are:
+
+```bash
+npm test
+npm run test:watch
+npm run test:e2e
+```
+
+FastAPI uses `uv run pytest`; Spring Boot uses `mvn test` until a Maven wrapper is generated.
+
 ## Project Destination Behaviour
 
 StackForge supports both named project directories and generation inside the current directory.
@@ -540,7 +585,8 @@ The Docker suite skips clearly if the Docker CLI is unavailable. Compose configu
 | `npm test` | Run core, CLI, built-in integration, and legacy compatibility tests |
 | `npm run test:unit` | Run core and CLI tests |
 | `npm run test:integration` | Run integration package tests |
-| `npm run test:generated` | Run generated-project tests; real generation is opt-in through `STACKFORGE_RUN_GENERATED_SMOKE=1` |
+| `npm run test:generated` | Run generated-project tests; builds use `STACKFORGE_RUN_GENERATED_SMOKE=1`, generated test suites use `STACKFORGE_RUN_GENERATED_TESTS=1` |
+| `npm run test:generated:e2e` | Run the opt-in generated full-stack browser-suite setup tier |
 | `npm run test:docker` | Validate generated Compose configuration when Docker is available |
 | `npm run test:all` | Build and run the default test tiers |
 
@@ -554,6 +600,8 @@ StackForge is under active development. Current limitations include:
 - Spring Boot + Supabase uses an explicit REST-client approach rather than claiming a special Spring persistence layer
 - Spring generated builds require Java 21 and Maven in the test environment
 - FastAPI dependency installation requires `uv`; when it is unavailable, the summary reports the manual setup instead of claiming installation succeeded
+- Browser test execution requires Playwright browser binaries and remains outside the default fast test run
+- Full-stack Playwright tests require separately started frontend, backend, and database services
 - Execution of provider-specific prompt definitions
 - Dynamic third-party provider discovery
 - Transactional cleanup after a failed generation

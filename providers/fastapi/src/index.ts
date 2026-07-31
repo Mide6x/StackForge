@@ -1,5 +1,6 @@
 import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
+import { testing } from "./testing.js";
 
 const provider: StackForgeProvider = {
   metadata: {
@@ -47,6 +48,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     }
   } },
   getDependencies: () => [{ name: "fastapi", version: ">=0.115", type: "python" }],
+  testing,
 };
 export default provider;
 export { provider };

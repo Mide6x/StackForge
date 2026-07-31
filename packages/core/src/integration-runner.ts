@@ -10,6 +10,7 @@ import { DefaultDependencyAccumulator } from "./accumulators/dependencies.js";
 import { DefaultDocumentationAccumulator } from "./accumulators/documentation.js";
 import { DefaultEnvironmentAccumulator } from "./accumulators/environment.js";
 import { DefaultGenerationResultBuilder } from "./accumulators/result.js";
+import { DefaultPackageScriptAccumulator } from "./accumulators/scripts.js";
 import { DefaultGeneratedFileWriter } from "./generation-files.js";
 
 export const integrationPhases: IntegrationPhase[] = [
@@ -71,6 +72,7 @@ export interface IntegrationRuntime {
   documentation: DefaultDocumentationAccumulator;
   result: DefaultGenerationResultBuilder;
   files: DefaultGeneratedFileWriter;
+  scripts: DefaultPackageScriptAccumulator;
   contextFor(integration: StackForgeIntegration): IntegrationContext;
 }
 
@@ -84,6 +86,7 @@ export function createIntegrationRuntime(
   const dependencies = new DefaultDependencyAccumulator();
   const documentation = new DefaultDocumentationAccumulator();
   const files = new DefaultGeneratedFileWriter(context.rootDirectory, providerFiles);
+  const scripts = new DefaultPackageScriptAccumulator();
 
   return {
     environment,
@@ -92,6 +95,7 @@ export function createIntegrationRuntime(
     documentation,
     result,
     files,
+    scripts,
     contextFor(integration) {
       const owner = integration.metadata.id;
       return {
@@ -102,6 +106,7 @@ export function createIntegrationRuntime(
         documentation: documentation.scoped(owner),
         result,
         files: files.scoped(owner),
+        scripts: scripts.scoped(owner),
       };
     },
   };

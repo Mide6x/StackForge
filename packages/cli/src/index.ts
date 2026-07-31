@@ -11,8 +11,9 @@ async function main(): Promise<void> {
   intro("StackForge");
   const registry = new InMemoryProviderRegistry();
   for (const provider of await loadProviders()) registry.register(provider);
-  const setup = await runWizard(registry.list(), nameFromArgs);
-  const engine = new DefaultGenerationEngine(registry, await loadIntegrations());
+  const integrations = await loadIntegrations();
+  const setup = await runWizard(registry.list(), integrations, nameFromArgs);
+  const engine = new DefaultGenerationEngine(registry, integrations);
   const progress = spinner();
   let activeMessage: string | undefined;
 

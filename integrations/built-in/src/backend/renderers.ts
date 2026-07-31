@@ -65,22 +65,38 @@ function renderExpress(
     ? `const frontendUrl = process.env.FRONTEND_URL ?? "${frontendOrigin}";\n`
     : "";
   const corsMiddleware = frontendOrigin ? "app.use(cors({ origin: frontendUrl }));\n" : "";
-  return [{
-    path: `src/index.${typeScript ? "ts" : "js"}`,
+  return [
+    {
+    path: `src/app.${typeScript ? "ts" : "js"}`,
     replace: true,
     content: `import "dotenv/config";
 ${corsImport}import express from "express";
 ${database.imports}
 
-const app = express();
-const port = Number(process.env.PORT ?? 3001);
+export const app = express();
 ${corsConfiguration}${database.client}
+
+let healthCheck = async () => {
+  ${database.health}
+};
+
+export function setHealthCheckForTests(check: () => Promise<void>) {
+  healthCheck = check;
+}
+
+export async function connectDatabase()${returnType} {
+  ${database.startup}
+}
+
+export async function closeDatabase()${returnType} {
+  ${database.shutdown}
+}
 
 ${corsMiddleware}app.use(express.json());
 
 app.get("/health", async (_request, response) => {
   try {
-    ${database.health}
+    await healthCheck();
     response.json({ status: "ok", database: "connected" });
   } catch (error) {
     console.error("Database health check failed", error);
@@ -88,25 +104,28 @@ app.get("/health", async (_request, response) => {
   }
 });
 
-async function start()${returnType} {
-  ${database.startup}
-  app.listen(port, () => console.log(\`API listening on :\${port}\`));
-}
+`,
+  },
+  {
+    path: `src/index.${typeScript ? "ts" : "js"}`,
+    replace: true,
+    content: `import { app, closeDatabase, connectDatabase } from "./app.js";
 
-async function shutdown()${returnType} {
-  ${database.shutdown}
-}
+const port = Number(process.env.PORT ?? 3001);
 
 process.on("SIGTERM", () => {
-  shutdown().finally(() => process.exit(0));
+  closeDatabase().finally(() => process.exit(0));
 });
 
-start().catch((error) => {
+connectDatabase().then(() => {
+  app.listen(port, () => console.log(\`API listening on :\${port}\`));
+}).catch((error) => {
   console.error("API failed to start", error);
   process.exit(1);
 });
 `,
-  }];
+  },
+  ];
 }
 
 function fastApiConfig(databaseId: DatabaseId, frontendOrigin: string | undefined): string {

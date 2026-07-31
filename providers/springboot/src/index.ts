@@ -1,5 +1,6 @@
 import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
+import { testing } from "./testing.js";
 
 const provider: StackForgeProvider = {
   metadata: {
@@ -31,6 +32,7 @@ const provider: StackForgeProvider = {
     if (context.selection.docker) await writeText(target, "Dockerfile", "FROM maven:3.9-eclipse-temurin-21 AS build\nWORKDIR /app\nCOPY pom.xml .\nRUN mvn dependency:go-offline\nCOPY src ./src\nRUN mvn package -DskipTests\nFROM eclipse-temurin:21-jre\nCOPY --from=build /app/target/*.jar app.jar\nEXPOSE 8080\nENTRYPOINT [\"java\", \"-jar\", \"/app.jar\"]\n");
   } },
   getDependencies: () => [{ name: "spring-boot-starter-web", version: "3.4.0", type: "java" }],
+  testing,
 };
 export default provider;
 export { provider };

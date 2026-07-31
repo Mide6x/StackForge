@@ -165,3 +165,43 @@ test("describes remote Supabase Docker output without claiming it starts the ful
   assert.doesNotMatch(summary, /Start everything/);
   assert.match(summary, /Keep the service-role key on the server only/);
 });
+
+test("formats only selected test suites with relative commands", () => {
+  const result: GenerationResult = {
+    projectName: "my-app",
+    rootDirectory: "/workspace/my-app",
+    components: [],
+    dependenciesInstalled: true,
+    environmentFiles: [],
+    warnings: [],
+    completedSteps: [],
+    testSuites: [{
+      providerId: "express",
+      component: "backend",
+      optionId: "vitest-supertest",
+      name: "Vitest + Supertest",
+      directory: "/workspace/my-app/backend",
+      commands: [{ name: "Unit and API integration tests", command: ["npm", "test"] }],
+    }],
+  };
+  const summary = formatGenerationSummary(result, "/workspace");
+  assert.match(summary, /Testing/);
+  assert.match(summary, /Vitest \+ Supertest/);
+  assert.match(summary, /cd my-app\/backend/);
+  assert.doesNotMatch(summary, /Playwright/);
+});
+
+test("formats current-directory test commands without redundant path segments", () => {
+  const result: GenerationResult = {
+    projectName: "current",
+    rootDirectory: "/workspace/current",
+    components: [], dependenciesInstalled: true, environmentFiles: [], warnings: [], completedSteps: [],
+    testSuites: [{
+      providerId: "nextjs", component: "frontend", optionId: "vitest-rtl", name: "Vitest + React Testing Library",
+      directory: "/workspace/current/frontend", commands: [{ name: "Unit tests", command: ["npm", "test"] }],
+    }],
+  };
+  const summary = formatGenerationSummary(result, "/workspace/current");
+  assert.match(summary, /cd frontend/);
+  assert.doesNotMatch(summary, /\.\/\.\/frontend/);
+});

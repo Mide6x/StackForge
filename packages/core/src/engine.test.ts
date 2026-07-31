@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { GenerationContext, StackForgeProvider } from "./contracts.js";
+import type { GenerationContext, StackForgeProvider, TestingGenerationContext } from "./contracts.js";
 import { DefaultGenerationEngine } from "./engine.js";
 import { writeText } from "./files.js";
 import { InMemoryProviderRegistry } from "./registry.js";
@@ -20,8 +21,22 @@ function createFrontendProvider(): StackForgeProvider {
     compatibility: { projectTypes: ["full-stack", "frontend-only"] },
     generator: {
       async generate(context) {
-        await writeText(join(context.rootDirectory, context.directories.frontend ?? "frontend"), "app.txt", "frontend\n");
+        const directory = join(context.rootDirectory, context.directories.frontend ?? "frontend");
+        await writeText(directory, "app.txt", "frontend\n");
+        await writeText(directory, "package.json", '{"scripts":{"dev":"test"}}\n');
       },
+    },
+    testing: {
+      options: [{ id: "fixture-tests", name: "Fixture tests", description: "", testTypes: ["unit"], commands: [{ name: "Test", command: ["npm", "test"] }] }],
+      generators: [{
+        optionId: "fixture-tests",
+        async generate(context: TestingGenerationContext) {
+          context.dependencies.add({ manager: "npm", target: "frontend", name: "vitest", version: "^3.2.4", development: true });
+          context.scripts.add({ target: "frontend", name: "test", command: "vitest run" });
+          await context.files.create("frontend/tests/example.test.ts", "export {};\n");
+          context.result.addTestSuite({ providerId: "frontend-test", component: "frontend", optionId: "fixture-tests", name: "Fixture tests", directory: join(context.rootDirectory, "frontend"), commands: [{ name: "Test", command: ["npm", "test"] }] });
+        },
+      }],
     },
   };
 }
@@ -120,5 +135,35 @@ test("unwritable destinations are rejected", async () => {
   } finally {
     await chmod(parentDirectory, 0o755);
     await rm(parentDirectory, { recursive: true, force: true });
+  }
+});
+
+test("an omitted testing selection generates no testing files", async () => {
+  const rootDirectory = await mkdtemp(join(tmpdir(), "stackforge-core-no-testing-"));
+  try {
+    const result = await createEngine().generate(createContext(rootDirectory));
+    assert.deepEqual(result.testSuites, []);
+    await assert.rejects(access(join(rootDirectory, "frontend", "tests"), constants.F_OK));
+    await assert.rejects(access(join(rootDirectory, "backend", "tests"), constants.F_OK));
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test("selected provider tests generate after scaffolding and merge scripts and dependencies", async () => {
+  const rootDirectory = await mkdtemp(join(tmpdir(), "stackforge-core-testing-"));
+  try {
+    const context = createContext(rootDirectory);
+    context.selection.testing = { frontend: ["fixture-tests"] };
+    const result = await createEngine().generate(context);
+    assert.equal((await readFile(join(rootDirectory, "frontend", "tests/example.test.ts"), "utf8")).trim(), "export {};");
+    const packageJson = JSON.parse(await readFile(join(rootDirectory, "frontend", "package.json"), "utf8")) as {
+      scripts: Record<string, string>; devDependencies: Record<string, string>;
+    };
+    assert.equal(packageJson.scripts.test, "vitest run");
+    assert.equal(packageJson.devDependencies.vitest, "^3.2.4");
+    assert.equal(result.testSuites?.[0]?.optionId, "fixture-tests");
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
   }
 });

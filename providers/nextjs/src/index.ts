@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { StackForgeProvider } from "@stackforge/core";
 import { targetDirectory, writeText } from "@stackforge/core";
+import { testing } from "./testing.js";
 
 const nextjsVersion = "16.2.12";
 
@@ -56,6 +57,7 @@ CMD ["npm", "run", "start"]
       }
     },
   },
+  testing,
 };
 
 export default provider;

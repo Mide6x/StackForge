@@ -220,15 +220,20 @@ async function applyPythonDependencies(
 ): Promise<void> {
   const projectPath = join(directory, "pyproject.toml");
   let project = await readFile(projectPath, "utf8");
-  const additions = contributions
-    .filter((item): item is Extract<DependencyContribution, { manager: "python" }> =>
-      item.manager === "python" && (item.group ?? "main") === "main")
-    .map((item) => `${item.name}${item.version ?? ""}`);
-  const array = findTomlStringArray(project, "dependencies");
-  if (!array) throw new Error(`Could not find project dependencies in ${projectPath}.`);
-  const current = JSON.parse(array.value) as string[];
-  const merged = [...new Set([...current, ...additions])].sort();
-  project = `${project.slice(0, array.start)}${JSON.stringify(merged, null, 2)}${project.slice(array.end)}`;
+  const python = contributions.filter((item): item is Extract<DependencyContribution, { manager: "python" }> =>
+    item.manager === "python");
+  for (const group of ["main", "development"] as const) {
+    const additions = python
+      .filter((item) => (item.group ?? "main") === group)
+      .map((item) => `${item.name}${item.version ?? ""}`);
+    if (additions.length === 0) continue;
+    const key = group === "main" ? "dependencies" : "dev-dependencies";
+    const array = findTomlStringArray(project, key);
+    if (!array) throw new Error(`Could not find ${key} in ${projectPath}.`);
+    const current = JSON.parse(array.value) as string[];
+    const merged = [...new Set([...current, ...additions])].sort();
+    project = `${project.slice(0, array.start)}${JSON.stringify(merged, null, 2)}${project.slice(array.end)}`;
+  }
   await writeFile(projectPath, project, "utf8");
 }
 

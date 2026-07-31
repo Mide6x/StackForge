@@ -8,6 +8,16 @@ export type SupportedLanguage = "typescript" | "javascript" | "python" | "java";
 
 export type ProjectType = "full-stack" | "frontend-only" | "backend-only";
 
+export type TestSuiteType = "unit" | "component" | "integration" | "e2e";
+
+export type TestSuiteComponent = "frontend" | "backend" | "full-stack";
+
+export interface TestingSelection {
+  frontend?: string[];
+  backend?: string[];
+  fullStack?: string[];
+}
+
 export interface ProviderMetadata {
   id: string;
   name: string;
@@ -25,6 +35,8 @@ export interface ProviderSelection {
   frontendLanguage?: SupportedLanguage;
   backendLanguage?: SupportedLanguage;
   docker: boolean;
+  /** Optional during the migration so existing API consumers remain compatible. */
+  testing?: TestingSelection;
 }
 
 export interface CompatibilityRule {
@@ -68,10 +80,37 @@ export interface ProviderRuntimeInstructions {
   installCommand?: string[];
   developmentCommand?: string[];
   productionCommand?: string[];
+  testCommands?: RuntimeTestCommand[];
   localUrl?: string;
   healthCheckUrl?: string;
   notes?: string[];
   dependenciesInstalled?: boolean;
+}
+
+export interface RuntimeTestCommand {
+  name: string;
+  command: readonly string[];
+  requires?: readonly string[];
+}
+
+export interface ProviderTestOption {
+  id: string;
+  name: string;
+  description: string;
+  testTypes: readonly TestSuiteType[];
+  commands: readonly RuntimeTestCommand[];
+  default?: boolean;
+  isAvailable?(selection: ProviderSelection): boolean;
+}
+
+export interface ProviderTestGenerator {
+  optionId: string;
+  generate(context: TestingGenerationContext): Promise<void>;
+}
+
+export interface ProviderTestingSupport {
+  options: ProviderTestOption[];
+  generators: ProviderTestGenerator[];
 }
 
 export interface DependencyDeclaration {
@@ -96,6 +135,7 @@ export interface StackForgeProvider {
   generator: ProviderGenerator;
   getDependencies?(context: GenerationContext): DependencyDeclaration[];
   postInstallHooks?: PostInstallHook[];
+  testing?: ProviderTestingSupport;
 }
 
 export interface ProviderRegistry {
@@ -132,6 +172,7 @@ export interface StackForgeIntegration {
   integrate?(context: GenerationContext): Promise<void>;
   /** @deprecated Contribute through context.result. */
   augmentResult?(result: GenerationResult, context: GenerationContext): Promise<void> | void;
+  testing?: ProviderTestingSupport;
 }
 
 export type EnvironmentTarget = "root" | "frontend" | "backend";
@@ -212,6 +253,16 @@ export interface DependencyAccumulator {
   add(contribution: DependencyContribution): void;
 }
 
+export interface PackageScriptContribution {
+  target: DependencyTarget;
+  name: string;
+  command: string;
+}
+
+export interface PackageScriptAccumulator {
+  add(contribution: PackageScriptContribution): void;
+}
+
 export interface DependencyInstallationOutcome {
   manager: DependencyManager;
   directory: string;
@@ -255,6 +306,7 @@ export interface GenerationResultBuilder {
   setDocker(details: DockerGenerationResult): void;
   addEnvironmentFile(path: string): void;
   addDependencyOutcome(outcome: DependencyInstallationOutcome): void;
+  addTestSuite(suite: GeneratedTestSuite): void;
 }
 
 export interface GeneratedFileWriter {
@@ -270,6 +322,10 @@ export interface IntegrationContext extends GenerationContext {
   readonly documentation: DocumentationAccumulator;
   readonly result: GenerationResultBuilder;
   readonly files: GeneratedFileWriter;
+}
+
+export interface TestingGenerationContext extends IntegrationContext {
+  readonly scripts: PackageScriptAccumulator;
 }
 
 export interface GeneratedComponent {
@@ -288,6 +344,16 @@ export interface DockerGenerationResult {
   command?: string[];
 }
 
+export interface GeneratedTestSuite {
+  providerId?: string;
+  integrationId?: string;
+  component: TestSuiteComponent;
+  optionId: string;
+  name: string;
+  directory: string;
+  commands: readonly RuntimeTestCommand[];
+}
+
 export interface GenerationResult {
   projectName: string;
   rootDirectory: string;
@@ -302,4 +368,5 @@ export interface GenerationResult {
   connection?: IntegrationConnectionResult;
   manualSteps?: string[];
   appliedIntegrations?: string[];
+  testSuites?: GeneratedTestSuite[];
 }

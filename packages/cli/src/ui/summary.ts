@@ -104,6 +104,35 @@ function formatEnvironmentFiles(result: GenerationResult, invocationDirectory: s
   return lines;
 }
 
+function formatTesting(result: GenerationResult, invocationDirectory: string): string[] {
+  const suites = result.testSuites ?? [];
+  if (suites.length === 0) return [];
+  const labels: Record<(typeof suites)[number]["component"], string> = {
+    frontend: "Frontend",
+    backend: "Backend",
+    "full-stack": "Full-stack",
+  };
+  const lines = ["Testing"];
+  for (const component of ["frontend", "backend", "full-stack"] as const) {
+    const selected = suites.filter((suite) => suite.component === component);
+    if (selected.length === 0) continue;
+    lines.push("", labels[component]);
+    for (const suite of selected) {
+      lines.push(`  ${suite.name}:`);
+      for (const runtime of suite.commands) {
+        lines.push("", `    ${runtime.name}:`, "", formatCommandBlock([
+          ...formatCdCommand(toRelativePath(invocationDirectory, suite.directory)),
+          runtime.command.join(" "),
+        ]));
+        for (const requirement of runtime.requires ?? []) {
+          lines.push(`    Requires: ${requirement}`);
+        }
+      }
+    }
+  }
+  return lines;
+}
+
 export function formatGenerationSummary(result: GenerationResult, invocationDirectory: string): string {
   const frontend = findComponent(result, "frontend");
   const backend = findComponent(result, "backend");
@@ -175,6 +204,9 @@ export function formatGenerationSummary(result: GenerationResult, invocationDire
   if (result.environmentFiles.length > 0) {
     lines.push("", ...formatEnvironmentFiles(result, invocationDirectory));
   }
+
+  const testing = formatTesting(result, invocationDirectory);
+  if (testing.length > 0) lines.push("", ...testing);
 
   if (result.docker?.enabled && result.docker.command?.length) {
     lines.push("", "Docker");

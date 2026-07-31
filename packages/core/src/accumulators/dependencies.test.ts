@@ -79,3 +79,21 @@ test("Python dependency merging handles extras inside quoted dependency names", 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("Python development dependencies merge into the uv development group", async () => {
+  const root = await mkdtemp(join(tmpdir(), "stackforge-python-development-"));
+  try {
+    await writeFile(join(root, "pyproject.toml"), '[project]\ndependencies = ["fastapi>=0.115"]\n\n[tool.uv]\ndev-dependencies = ["pytest>=8.0"]\n');
+    const accumulator = new DefaultDependencyAccumulator();
+    accumulator.scoped("tests").add({ manager: "python", target: "backend", name: "httpx", version: ">=0.28", group: "development" });
+    await accumulator.apply({
+      projectName: "python-development",
+      rootDirectory: root,
+      selection: { projectType: "backend-only", providerIds: ["fastapi"], docker: false },
+      answers: {}, directories: {}, log() {}, async run() {},
+    });
+    assert.match(await readFile(join(root, "pyproject.toml"), "utf8"), /httpx>=0\.28/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -9,6 +9,7 @@ import {
   selectedId,
 } from "../catalog.js";
 import { renderBackendFiles } from "./renderers.js";
+import { goldenPathTesting } from "../testing.js";
 
 export const backendSourceFinalizer: StackForgeIntegration = {
   metadata: {
@@ -19,6 +20,7 @@ export const backendSourceFinalizer: StackForgeIntegration = {
   },
   phase: "finalize",
   priority: -100,
+  testing: goldenPathTesting,
   isApplicable(selection) {
     const hasBackendAndDatabase = Boolean(selectedId(selection.providerIds, backendIds))
       && Boolean(selectedId(selection.providerIds, databaseIds));

@@ -1,10 +1,12 @@
-import { cancel, confirm, isCancel, select, text } from "@clack/prompts";
+import { cancel, confirm, isCancel, multiselect, select, text } from "@clack/prompts";
 import type {
   ProjectType,
   ProviderCategory,
   ProviderSelection,
   StackForgeProvider,
+  StackForgeIntegration,
   SupportedLanguage,
+  TestingSelection,
 } from "@stackforge/core";
 import {
   assertDestinationWritable,
@@ -68,6 +70,7 @@ async function chooseLanguage(provider: StackForgeProvider, title: string): Prom
 
 export async function runWizard(
   providers: StackForgeProvider[],
+  integrations: StackForgeIntegration[],
   initialName?: string,
 ): Promise<{ selection: ProviderSelection; rootDirectory: string; projectName: string }> {
   const invocationDirectory = process.env.INIT_CWD ?? process.cwd();
@@ -125,6 +128,16 @@ export async function runWizard(
     initialValue: true,
   }) as boolean | symbol);
 
+  const selectionForTesting: ProviderSelection = {
+    projectType,
+    providerIds,
+    frontendLanguage,
+    backendLanguage,
+    docker,
+    testing: {},
+  };
+  const testing = await askForTesting(providers, integrations, selectionForTesting);
+
   const targetInput = initialName
     ? initialName
     : await askForDestination();
@@ -135,8 +148,99 @@ export async function runWizard(
   return {
     projectName: destination.projectName,
     rootDirectory: destination.rootDirectory,
-    selection: { projectType, providerIds, frontendLanguage, backendLanguage, docker },
+    selection: { projectType, providerIds, frontendLanguage, backendLanguage, docker, testing },
   };
+}
+
+export function availableTestOptions(
+  provider: StackForgeProvider | undefined,
+  selection: ProviderSelection,
+) {
+  return provider?.testing?.options.filter((option) => option.isAvailable?.(selection) !== false) ?? [];
+}
+
+export function availableFullStackTestOptions(
+  integrations: StackForgeIntegration[],
+  selection: ProviderSelection,
+) {
+  return integrations.flatMap((integration) =>
+    (integration.testing?.options ?? [])
+      .filter((option) => option.isAvailable?.(selection) !== false)
+      .map((option) => ({ integration, option })));
+}
+
+export function testingPromptComponents(projectType: ProjectType): Array<"frontend" | "backend" | "full-stack"> {
+  if (projectType === "frontend-only") return ["frontend"];
+  if (projectType === "backend-only") return ["backend"];
+  return ["frontend", "backend", "full-stack"];
+}
+
+async function askForTesting(
+  providers: StackForgeProvider[],
+  integrations: StackForgeIntegration[],
+  selection: ProviderSelection,
+): Promise<TestingSelection> {
+  const frontend = providers.find((provider) =>
+    provider.metadata.category === "frontend" && selection.providerIds.includes(provider.metadata.id));
+  const backend = providers.find((provider) =>
+    provider.metadata.category === "backend" && selection.providerIds.includes(provider.metadata.id));
+  const testing: TestingSelection = {};
+
+  if (testingPromptComponents(selection.projectType).includes("frontend")) {
+    const values = await askProviderTests(
+      frontend,
+      selection,
+      selection.projectType === "full-stack" ? "Add frontend tests?" : "Add tests?",
+      "Select frontend test coverage",
+    );
+    if (values) testing.frontend = values;
+  }
+  if (testingPromptComponents(selection.projectType).includes("backend")) {
+    const values = await askProviderTests(
+      backend,
+      selection,
+      selection.projectType === "full-stack" ? "Add backend tests?" : "Add tests?",
+      "Select backend test coverage",
+    );
+    if (values) testing.backend = values;
+  }
+  if (testingPromptComponents(selection.projectType).includes("full-stack")) {
+    const options = availableFullStackTestOptions(integrations, selection);
+    if (options.length > 0) {
+      const addTests = ensurePromptValue(await confirm({
+        message: "Add full-stack end-to-end tests?",
+        initialValue: false,
+      }) as boolean | symbol);
+      if (addTests) {
+        const values = ensurePromptValue(await multiselect({
+          message: "Select full-stack end-to-end coverage",
+          options: options.map(({ option }) => ({ value: option.id, label: option.name, hint: option.description })),
+          required: false,
+        }) as string[] | symbol);
+        if (values.length > 0) testing.fullStack = values;
+      }
+    }
+  }
+  return testing;
+}
+
+async function askProviderTests(
+  provider: StackForgeProvider | undefined,
+  selection: ProviderSelection,
+  confirmMessage: string,
+  selectMessage: string,
+): Promise<string[] | undefined> {
+  const options = availableTestOptions(provider, selection);
+  if (options.length === 0) return undefined;
+  const addTests = ensurePromptValue(await confirm({ message: confirmMessage, initialValue: true }) as boolean | symbol);
+  if (!addTests) return undefined;
+  const selected = ensurePromptValue(await multiselect({
+    message: selectMessage,
+    options: options.map((option) => ({ value: option.id, label: option.name, hint: option.description })),
+    initialValues: options.filter((option) => option.default).map((option) => option.id),
+    required: false,
+  }) as string[] | symbol);
+  return selected;
 }
 
 async function confirmDestinationSafety(rootDirectory: string): Promise<void> {

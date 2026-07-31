@@ -11,6 +11,8 @@ import type {
   ProviderRegistry,
   StackForgeIntegration,
   StackForgeProvider,
+  TestSuiteComponent,
+  TestingGenerationContext,
 } from "./contracts.js";
 import { DefaultGenerationResultBuilder } from "./accumulators/result.js";
 import { writeText } from "./files.js";
@@ -99,6 +101,17 @@ export class DefaultGenerationEngine implements GenerationEngine {
           completedSteps.push(step);
         }
       }
+
+      await this.runSelectedTestGenerators(
+        providers,
+        integrations,
+        runtime,
+        context,
+        completedSteps,
+      );
+
+      await this.runStep("Package script updates", () => runtime.scripts.apply(context));
+      completedSteps.push("Package script updates");
 
       const dependencyGroups = await this.runStepWithResult(
         "Dependency manifest updates",
@@ -197,6 +210,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
       environmentFiles: [],
       warnings: [],
       completedSteps: [],
+      testSuites: [],
     };
   }
 
@@ -401,6 +415,82 @@ export class DefaultGenerationEngine implements GenerationEngine {
       }
     }
     return installed;
+  }
+
+  private async runSelectedTestGenerators(
+    providers: StackForgeProvider[],
+    integrations: StackForgeIntegration[],
+    runtime: ReturnType<typeof createIntegrationRuntime>,
+    context: GenerationContext,
+    completedSteps: string[],
+  ): Promise<void> {
+    const selection = context.selection.testing ?? {};
+    if (
+      (selection.frontend ?? []).includes("playwright")
+      && (selection.fullStack ?? []).includes("fullstack-playwright-health")
+    ) {
+      throw new Error(
+        "Choose either the frontend Playwright suite or the full-stack Playwright health flow, not both.",
+      );
+    }
+    const providerSelections: Array<{
+      component: Exclude<TestSuiteComponent, "full-stack">;
+      optionIds: string[];
+      provider: StackForgeProvider | undefined;
+    }> = [
+      {
+        component: "frontend",
+        optionIds: selection.frontend ?? [],
+        provider: providers.find((provider) => provider.metadata.category === "frontend"),
+      },
+      {
+        component: "backend",
+        optionIds: selection.backend ?? [],
+        provider: providers.find((provider) => provider.metadata.category === "backend"),
+      },
+    ];
+
+    for (const item of providerSelections) {
+      if (item.optionIds.length === 0) continue;
+      if (!item.provider?.testing) {
+        throw new Error(`The selected ${item.component} does not provide generated test suites.`);
+      }
+      for (const optionId of item.optionIds) {
+        const option = item.provider.testing.options.find((candidate) => candidate.id === optionId);
+        const generator = item.provider.testing.generators.find((candidate) => candidate.optionId === optionId);
+        if (!option || !generator || option.isAvailable?.(context.selection) === false) {
+          throw new Error(`Unsupported ${item.component} test option: ${optionId}`);
+        }
+        const owner: StackForgeIntegration = {
+          metadata: {
+            id: `testing:${item.provider.metadata.id}:${optionId}`,
+            name: `${item.provider.metadata.name} ${option.name}`,
+            description: "Generated provider test suite.",
+            providerIds: [item.provider.metadata.id],
+          },
+          phase: "finalize",
+          apply: async () => {},
+        };
+        const step = `${option.name} test generation`;
+        context.log(`Generating ${option.name} tests...`);
+        await this.runStep(step, () => generator.generate(runtime.contextFor(owner) as TestingGenerationContext));
+        completedSteps.push(step);
+      }
+    }
+
+    for (const optionId of selection.fullStack ?? []) {
+      const integration = integrations.find((candidate) =>
+        candidate.testing?.options.some((option) => option.id === optionId && option.isAvailable?.(context.selection) !== false));
+      const option = integration?.testing?.options.find((candidate) => candidate.id === optionId);
+      const generator = integration?.testing?.generators.find((candidate) => candidate.optionId === optionId);
+      if (!integration || !option || !generator) {
+        throw new Error(`Unsupported full-stack test option: ${optionId}`);
+      }
+      const step = `${option.name} test generation`;
+      context.log(`Generating ${option.name} tests...`);
+      await this.runStep(step, () => generator.generate(runtime.contextFor(integration) as TestingGenerationContext));
+      completedSteps.push(step);
+    }
   }
 
   private managerForProvider(provider: StackForgeProvider): DependencyManager | undefined {
