@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
-import { basename, resolve } from "node:path";
-import { access, readdir } from "node:fs/promises";
-import { constants } from "node:fs";
+import { basename } from "node:path";
+import { readdir } from "node:fs/promises";
+import {
+  assertDirectoryWritable,
+  canonicalizeDestinationPath,
+} from "./path-safety.js";
 
 export type ProjectDestinationMode = "new-directory" | "current-directory";
 const harmlessEntries = new Set([".DS_Store"]);
@@ -19,33 +22,28 @@ export interface DestinationInspection {
 
 export type NonEmptyDestinationDecision = "cancel" | "continue";
 
-function isBlank(value: string | undefined): boolean {
-  return !value || value.trim().length === 0;
-}
+export async function resolveDestination(
+  invocationDirectory: string,
+  targetPath: string,
+): Promise<ProjectDestination> {
+  const { canonicalInvocation, canonicalRoot, normalizedInput } = await canonicalizeDestinationPath(
+    invocationDirectory,
+    targetPath,
+  );
 
-function normalizeTargetPath(targetPath: string): string {
-  const trimmed = targetPath.trim();
-  if (isBlank(trimmed)) {
-    throw new Error("Please provide a valid project path.");
-  }
-  if (trimmed === ".." || trimmed === "/") {
-    throw new Error(`The destination path "${trimmed}" is not supported.`);
-  }
-  return trimmed;
-}
-
-export function resolveDestination(invocationDirectory: string, targetPath: string): ProjectDestination {
-  const normalizedPath = normalizeTargetPath(targetPath);
-
-  if (normalizedPath === ".") {
+  if (normalizedInput === ".") {
     return {
       mode: "current-directory",
-      projectName: basename(invocationDirectory),
-      rootDirectory: invocationDirectory,
+      projectName: basename(canonicalRoot),
+      rootDirectory: canonicalRoot,
     };
   }
 
-  const projectName = basename(normalizedPath);
+  if (canonicalRoot === canonicalInvocation) {
+    throw new Error(`The destination path "${targetPath}" is not supported.`);
+  }
+
+  const projectName = basename(canonicalRoot);
   if (!projectName || projectName === "." || projectName === "..") {
     throw new Error(`The destination path "${targetPath}" is not supported.`);
   }
@@ -53,7 +51,7 @@ export function resolveDestination(invocationDirectory: string, targetPath: stri
   return {
     mode: "new-directory",
     projectName,
-    rootDirectory: resolve(invocationDirectory, normalizedPath),
+    rootDirectory: canonicalRoot,
   };
 }
 
@@ -77,25 +75,7 @@ export async function inspectDestination(rootDirectory: string): Promise<Destina
 }
 
 export async function assertDestinationWritable(rootDirectory: string): Promise<void> {
-  let probe = rootDirectory;
-
-  for (;;) {
-    try {
-      await access(probe, constants.W_OK);
-      return;
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code !== "ENOENT") {
-        throw new Error(`StackForge cannot write to ${rootDirectory}.`);
-      }
-    }
-
-    const parent = resolve(probe, "..");
-    if (parent === probe) {
-      throw new Error(`StackForge cannot write to ${rootDirectory}.`);
-    }
-    probe = parent;
-  }
+  await assertDirectoryWritable(rootDirectory);
 }
 
 export async function ensureDestinationApproved(

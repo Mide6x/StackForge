@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { access, mkdir, readdir, stat } from "node:fs/promises";
+import { access, lstat, mkdir, readdir, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -22,6 +22,11 @@ import {
   integrationPhases,
   matchingIntegrations,
 } from "./integration-runner.js";
+import {
+  componentDirectory,
+  componentRelativeDirectory,
+  resolveInsideRoot,
+} from "./path-safety.js";
 
 export class GenerationFailure extends Error {
   constructor(
@@ -223,7 +228,9 @@ export class DefaultGenerationEngine implements GenerationEngine {
       providerId: provider.metadata.id,
       name: provider.metadata.name,
       category,
-      directory: join(context.rootDirectory, relativeDirectory),
+      directory: category === "database" || relativeDirectory === "."
+        ? context.rootDirectory
+        : resolveInsideRoot(context.rootDirectory, relativeDirectory),
       relativeDirectory,
       runtime: provider.metadata.runtime,
     };
@@ -231,9 +238,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
 
   private componentRelativeDirectory(category: GeneratedComponent["category"], context: GenerationContext): string {
     if (category === "database") return ".";
-    if (context.selection.projectType !== "full-stack") return ".";
-    if (category === "frontend") return context.directories.frontend ?? "frontend";
-    if (category === "backend") return context.directories.backend ?? "backend";
+    if (category === "frontend" || category === "backend") return componentRelativeDirectory(context, category);
     return ".";
   }
 
@@ -265,13 +270,13 @@ export class DefaultGenerationEngine implements GenerationEngine {
     }
 
     for (const relativePath of this.rootConflicts(context)) {
-      await this.assertPathDoesNotExist(join(context.rootDirectory, relativePath));
+      await this.assertPathDoesNotExist(resolveInsideRoot(context.rootDirectory, relativePath));
     }
 
     if (context.selection.projectType !== "full-stack") return;
 
-    await this.assertAppDirectoryAvailable(join(context.rootDirectory, context.directories.frontend ?? "frontend"));
-    await this.assertAppDirectoryAvailable(join(context.rootDirectory, context.directories.backend ?? "backend"));
+    await this.assertAppDirectoryAvailable(componentDirectory(context, "frontend"));
+    await this.assertAppDirectoryAvailable(componentDirectory(context, "backend"));
   }
 
   private async assertRootDirectoryWritable(rootDirectory: string): Promise<void> {
@@ -298,6 +303,11 @@ export class DefaultGenerationEngine implements GenerationEngine {
 
   private async assertAppDirectoryAvailable(directoryPath: string): Promise<void> {
     try {
+      const entry = await lstat(directoryPath);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`StackForge will not generate through symlinks: ${directoryPath}`);
+      }
+
       const info = await stat(directoryPath);
       if (!info.isDirectory()) {
         throw new Error(`StackForge would conflict with existing path: ${directoryPath}`);
@@ -365,8 +375,8 @@ export class DefaultGenerationEngine implements GenerationEngine {
     if (context.selection.projectType !== "full-stack") return;
 
     await Promise.all([
-      mkdir(join(context.rootDirectory, context.directories.frontend ?? "frontend"), { recursive: true }),
-      mkdir(join(context.rootDirectory, context.directories.backend ?? "backend"), { recursive: true }),
+      mkdir(componentDirectory(context, "frontend"), { recursive: true }),
+      mkdir(componentDirectory(context, "backend"), { recursive: true }),
     ]);
   }
 
@@ -535,7 +545,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
     for (const path of [...environmentFiles, ...(composeFile ? [composeFile] : [])]) {
       await access(path, constants.F_OK);
     }
-    await access(join(context.rootDirectory, "README.md"), constants.F_OK);
+    await access(resolveInsideRoot(context.rootDirectory, "README.md"), constants.F_OK);
   }
 }
 
@@ -558,8 +568,5 @@ export async function runCommand(command: string, args: string[], cwd: string): 
 }
 
 export function targetDirectory(context: GenerationContext, category: "frontend" | "backend"): string {
-  if (context.selection.projectType === "full-stack") {
-    return join(context.rootDirectory, context.directories[category] ?? category);
-  }
-  return context.rootDirectory;
+  return componentDirectory(context, category);
 }

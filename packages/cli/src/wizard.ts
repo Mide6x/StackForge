@@ -144,7 +144,7 @@ export async function runWizard(
   const targetInput = initialName
     ? initialName
     : await askForDestination();
-  const destination = resolveDestination(invocationDirectory, targetInput);
+  const destination = await resolveDestination(invocationDirectory, targetInput);
   await assertDestinationWritable(destination.rootDirectory);
   await confirmDestinationSafety(destination.rootDirectory);
 

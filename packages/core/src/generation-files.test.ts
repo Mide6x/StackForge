@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -21,6 +21,31 @@ test("integrations can create files and intentionally replace provider files", a
     assert.equal(await readFile(join(root, "frontend/lib/api.ts"), "utf8"), "export {};\n");
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("generated-file writer rejects writes through symlinked directories", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "stackforge-files-symlink-"));
+  const root = join(parent, "project");
+  const outside = join(parent, "outside");
+  try {
+    await mkdir(root, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await symlink(outside, join(root, "frontend"), "dir");
+
+    const writer = new DefaultGeneratedFileWriter(root, new Set());
+    await assert.rejects(
+      writer.scoped("connector").create("frontend/page.tsx", "unsafe\n"),
+      /will not write through symlinks/i,
+    );
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === "EPERM" || nodeError.code === "EACCES" || nodeError.code === "ENOTSUP") {
+      return;
+    }
+    throw error;
+  } finally {
+    await rm(parent, { recursive: true, force: true });
   }
 });
 

@@ -7,6 +7,7 @@ import type {
   GenerationContext,
 } from "../contracts.js";
 import { writeText } from "../files.js";
+import { componentRelativeDirectory, resolveInsideRoot } from "../path-safety.js";
 
 type OwnedEnvironmentContribution = EnvironmentVariableContribution & {
   owners: Set<string>;
@@ -18,12 +19,14 @@ function assertVariableName(name: string): void {
   }
 }
 
-function targetPath(context: GenerationContext, target: EnvironmentTarget): string {
-  if (target === "root") return join(context.rootDirectory, ".env.example");
-  const directory = target === "frontend"
-    ? context.directories.frontend ?? "frontend"
-    : context.directories.backend ?? "backend";
-  return join(context.rootDirectory, directory, ".env.example");
+function targetPath(context: GenerationContext, target: EnvironmentTarget): { relative: string; absolute: string } {
+  const relative = target === "root"
+    ? ".env.example"
+    : join(componentRelativeDirectory(context, target), ".env.example");
+  return {
+    relative,
+    absolute: resolveInsideRoot(context.rootDirectory, relative),
+  };
 }
 
 export class DefaultEnvironmentAccumulator {
@@ -113,8 +116,8 @@ export class DefaultEnvironmentAccumulator {
       }
 
       const path = targetPath(context, target);
-      await writeText(path, "", `${lines.join("\n")}\n`);
-      files.push(path);
+      await writeText(context.rootDirectory, path.relative, `${lines.join("\n")}\n`);
+      files.push(path.absolute);
     }
 
     return files;

@@ -10,6 +10,7 @@ import type {
   DependencyTarget,
   GenerationContext,
 } from "../contracts.js";
+import { componentDirectory } from "../path-safety.js";
 
 type OwnedDependency = {
   contribution: DependencyContribution;
@@ -37,11 +38,7 @@ function versionOf(contribution: DependencyContribution): string | undefined {
 }
 
 function targetDirectory(context: GenerationContext, target: DependencyTarget): string {
-  if (context.selection.projectType !== "full-stack") return context.rootDirectory;
-  const relative = target === "frontend"
-    ? context.directories.frontend ?? "frontend"
-    : context.directories.backend ?? "backend";
-  return join(context.rootDirectory, relative);
+  return componentDirectory(context, target);
 }
 
 function dependencyLabel(contribution: DependencyContribution): string {
