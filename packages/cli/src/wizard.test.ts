@@ -2,7 +2,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ProviderSelection, StackForgeIntegration, StackForgeProvider } from "@stackforge/core";
-import { availableFullStackTestOptions, availableTestOptions, testingPromptComponents } from "./wizard.js";
+import {
+  DEFAULT_ADD_TESTS,
+  availableFullStackTestOptions,
+  availableTestOptions,
+  testingPromptComponents,
+} from "./wizard.js";
 
 const selection: ProviderSelection = {
   projectType: "full-stack",
@@ -37,4 +42,8 @@ test("testing prompt helpers limit coverage questions to the selected project ty
   assert.deepEqual(testingPromptComponents("frontend-only"), ["frontend"]);
   assert.deepEqual(testingPromptComponents("backend-only"), ["backend"]);
   assert.deepEqual(testingPromptComponents("full-stack"), ["frontend", "backend", "full-stack"]);
+});
+
+test("generated tests remain opt-in by default", () => {
+  assert.equal(DEFAULT_ADD_TESTS, false);
 });

@@ -43,10 +43,27 @@ for (const manifest of manifests) {
 }
 
 const lockfile = JSON.parse(readFileSync("package-lock.json", "utf8"));
+const projectLockfileEntries = new Set(
+  manifests.map((manifest) =>
+    manifest === "package.json" ? "" : manifest.replace(/\/package\.json$/, ""),
+  ),
+);
+
 for (const manifest of manifests) {
   const workspace = manifest === "package.json" ? "" : manifest.replace(/\/package\.json$/, "");
   if (lockfile.packages?.[workspace]?.license !== "MPL-2.0") {
     failures.push(`package-lock.json entry "${workspace}" must declare MPL-2.0.`);
+  }
+}
+
+for (const [packagePath, packageMetadata] of Object.entries(lockfile.packages ?? {})) {
+  if (
+    packageMetadata.license === "MPL-2.0" &&
+    !projectLockfileEntries.has(packagePath)
+  ) {
+    failures.push(
+      `Third-party package-lock.json entry "${packagePath}" unexpectedly declares StackForge's MPL-2.0 licence.`,
+    );
   }
 }
 

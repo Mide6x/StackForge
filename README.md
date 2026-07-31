@@ -3,7 +3,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/Mide6x/StackForge?style=for-the-badge)](https://github.com/Mide6x/StackForge/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Mide6x/StackForge?style=for-the-badge)](https://github.com/Mide6x/StackForge/network/members)
 [![GitHub issues](https://img.shields.io/github/issues/Mide6x/StackForge?style=for-the-badge)](https://github.com/Mide6x/StackForge/issues)
-[![License](https://img.shields.io/github/license/Mide6x/StackForge?style=for-the-badge)](https://github.com/Mide6x/StackForge/blob/main/LICENSE)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue?style=for-the-badge)](https://github.com/Mide6x/StackForge/blob/main/LICENSE)
 
 **StackForge** is an extensible TypeScript CLI for scaffolding modern frontend, backend, and full-stack applications through a provider-driven architecture.
 
@@ -564,8 +564,13 @@ npm test
 Run the opt-in generated-project suite, which downloads framework dependencies and executes generated build or syntax commands:
 
 ```bash
+STACKFORGE_RUN_GENERATED_TESTS=1 npm run test:generated
 STACKFORGE_RUN_GENERATED_SMOKE=1 npm run test:generated
 ```
+
+The non-required `generated-project-tests` CI job runs both tiers with Java 21,
+Maven, and `uv` available. Browser-dependent Playwright execution remains in its
+separate slower tier.
 
 Run Compose validation:
 

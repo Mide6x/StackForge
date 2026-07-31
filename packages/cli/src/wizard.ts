@@ -16,6 +16,8 @@ import {
   resolveDestination,
 } from "./destination.js";
 
+export const DEFAULT_ADD_TESTS = false;
+
 type Choice = {
   value: string;
   label: string;
@@ -233,7 +235,9 @@ async function askProviderTests(
 ): Promise<string[] | undefined> {
   const options = availableTestOptions(provider, selection);
   if (options.length === 0) return undefined;
-  const addTests = ensurePromptValue(await confirm({ message: confirmMessage, initialValue: true }) as boolean | symbol);
+  const addTests = ensurePromptValue(
+    await confirm({ message: confirmMessage, initialValue: DEFAULT_ADD_TESTS }) as boolean | symbol,
+  );
   if (!addTests) return undefined;
   const selected = ensurePromptValue(await multiselect({
     message: selectMessage,
