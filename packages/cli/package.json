@@ -1,6 +1,6 @@
 {
-  "name": "create-stackforge",
-  "version": "0.1.0",
+  "name": "@mide6x/create-stackforge",
+  "version": "0.1.0-alpha.1",
   "license": "MPL-2.0",
   "description": "Create modern full-stack projects with StackForge",
   "type": "module",
@@ -9,27 +9,31 @@
     "stackforge": "./dist/index.js"
   },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "TRADEMARKS.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ./scripts/build.mjs",
     "dev": "tsx src/index.ts",
     "test": "node --import tsx --test src/*.test.ts src/**/*.test.ts"
   },
-  "dependencies": {
+  "devDependencies": {
     "@clack/prompts": "^1.7.0",
-    "@stackforge/core": "0.1.0",
-    "@stackforge/integrations-built-in": "0.1.0",
-    "@stackforge/provider-express": "0.1.0",
-    "@stackforge/provider-fastapi": "0.1.0",
-    "@stackforge/provider-mongodb": "0.1.0",
-    "@stackforge/provider-nextjs": "0.1.0",
-    "@stackforge/provider-postgres": "0.1.0",
-    "@stackforge/provider-react": "0.1.0",
-    "@stackforge/provider-springboot": "0.1.0",
-    "@stackforge/provider-supabase": "0.1.0",
-    "@stackforge/provider-vue": "0.1.0"
+    "@stackforge/core": "0.1.0-alpha.1",
+    "@stackforge/integrations-built-in": "0.1.0-alpha.1",
+    "@stackforge/provider-express": "0.1.0-alpha.1",
+    "@stackforge/provider-fastapi": "0.1.0-alpha.1",
+    "@stackforge/provider-mongodb": "0.1.0-alpha.1",
+    "@stackforge/provider-nextjs": "0.1.0-alpha.1",
+    "@stackforge/provider-postgres": "0.1.0-alpha.1",
+    "@stackforge/provider-react": "0.1.0-alpha.1",
+    "@stackforge/provider-springboot": "0.1.0-alpha.1",
+    "@stackforge/provider-supabase": "0.1.0-alpha.1",
+    "@stackforge/provider-vue": "0.1.0-alpha.1",
+    "esbuild": "^0.28.1"
   }
 }

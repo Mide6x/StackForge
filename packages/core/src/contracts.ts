@@ -126,7 +126,11 @@ export interface ProviderGenerator {
 
 export interface PostInstallHook {
   name: string;
-  run(context: GenerationContext): Promise<void>;
+  run(context: ProviderHookContext): Promise<void>;
+}
+
+export interface ProviderHookContext extends GenerationContext {
+  setProviderRuntime(providerId: string, runtime: ProviderRuntimeInstructions): void;
 }
 
 export interface StackForgeProvider {

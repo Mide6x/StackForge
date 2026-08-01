@@ -206,3 +206,36 @@ test("formats current-directory test commands without redundant path segments", 
   assert.match(summary, /cd frontend/);
   assert.doesNotMatch(summary, /\.\/\.\/frontend/);
 });
+
+test("formats FastAPI standard Python fallback start commands", () => {
+  const result: GenerationResult = {
+    projectName: "my-api",
+    rootDirectory: "/workspace/my-api",
+    components: [
+      {
+        providerId: "fastapi",
+        name: "FastAPI",
+        category: "backend",
+        directory: "/workspace/my-api/backend",
+        relativeDirectory: "backend",
+        runtime: {
+          developmentCommand: [
+            "source .venv/bin/activate",
+            "python -m uvicorn app.main:app --reload",
+          ],
+          localUrl: "http://localhost:8000",
+          healthCheckUrl: "http://localhost:8000/health",
+          dependenciesInstalled: true,
+        },
+      },
+    ],
+    dependenciesInstalled: true,
+    environmentFiles: [],
+    warnings: [],
+    completedSteps: [],
+  };
+
+  const summary = formatGenerationSummary(result, "/workspace");
+  assert.match(summary, /source \.venv\/bin\/activate/);
+  assert.match(summary, /python -m uvicorn app\.main:app --reload/);
+});

@@ -1,31 +1,32 @@
 // SPDX-License-Identifier: MPL-2.0
-import {
-  loadIntegrationModule,
-  loadProvider,
-  type StackForgeIntegration,
-  type StackForgeProvider,
-} from "@stackforge/core";
+import type { StackForgeIntegration, StackForgeProvider } from "@stackforge/core";
+import builtInIntegrations from "../../../integrations/built-in/src/index.js";
+import expressProvider from "../../../providers/express/src/index.js";
+import fastapiProvider from "../../../providers/fastapi/src/index.js";
+import mongodbProvider from "../../../providers/mongodb/src/index.js";
+import nextjsProvider from "../../../providers/nextjs/src/index.js";
+import postgresProvider from "../../../providers/postgres/src/index.js";
+import reactProvider from "../../../providers/react/src/index.js";
+import springbootProvider from "../../../providers/springboot/src/index.js";
+import supabaseProvider from "../../../providers/supabase/src/index.js";
+import vueProvider from "../../../providers/vue/src/index.js";
 
-const providerPackages = [
-  "@stackforge/provider-nextjs",
-  "@stackforge/provider-react",
-  "@stackforge/provider-vue",
-  "@stackforge/provider-express",
-  "@stackforge/provider-fastapi",
-  "@stackforge/provider-springboot",
-  "@stackforge/provider-postgres",
-  "@stackforge/provider-mongodb",
-  "@stackforge/provider-supabase",
+const providers = [
+  nextjsProvider,
+  reactProvider,
+  vueProvider,
+  expressProvider,
+  fastapiProvider,
+  springbootProvider,
+  postgresProvider,
+  mongodbProvider,
+  supabaseProvider,
 ] as const;
 
 export async function loadProviders(): Promise<StackForgeProvider[]> {
-  return Promise.all(providerPackages.map(loadProvider));
+  return [...providers];
 }
 
-const integrationPackages = [
-  "@stackforge/integrations-built-in",
-] as const;
-
 export async function loadIntegrations(): Promise<StackForgeIntegration[]> {
-  return (await Promise.all(integrationPackages.map(loadIntegrationModule))).flat();
+  return [...builtInIntegrations];
 }
