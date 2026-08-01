@@ -9,6 +9,7 @@ import type {
   GenerationResult,
   GenerationContext,
   GenerationEngine,
+  ProviderHookContext,
   ProviderRegistry,
   StackForgeIntegration,
   StackForgeProvider,
@@ -88,7 +89,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
           });
           completedSteps.push(step);
         }
-        await this.runProviderHooks(providers, context, completedSteps);
+        await this.runProviderHooks(providers, context, legacyResult, completedSteps);
         legacyResult.completedSteps = completedSteps;
         return legacyResult;
       }
@@ -128,6 +129,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
       const externallyInstalledTargets = await this.runProviderHooks(
         providers,
         context,
+        initialResult,
         completedSteps,
       );
       const outcomes = await this.runStepWithResult(
@@ -358,6 +360,8 @@ export class DefaultGenerationEngine implements GenerationEngine {
     }
 
     if (providers.has("supabase")) {
+      conflicts.add("supabase/config.toml");
+      conflicts.add("supabase/seed.sql");
       conflicts.add("supabase/README.md");
     }
 
@@ -366,7 +370,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
 
   private async writeBaseFiles(context: GenerationContext): Promise<void> {
     await Promise.all([
-      writeText(context.rootDirectory, ".gitignore", "node_modules/\ndist/\n.env\n.env.local\n__pycache__/\n*.py[cod]\ntarget/\n.idea/\n.DS_Store\n"),
+      writeText(context.rootDirectory, ".gitignore", "node_modules/\ndist/\n.env\n.env.local\n.venv/\n__pycache__/\n*.py[cod]\ntarget/\n.idea/\n.DS_Store\n"),
       writeText(context.rootDirectory, ".editorconfig", "root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\ninsert_final_newline = true\nindent_style = space\nindent_size = 2\n"),
     ]);
   }
@@ -410,6 +414,7 @@ export class DefaultGenerationEngine implements GenerationEngine {
   private async runProviderHooks(
     providers: StackForgeProvider[],
     context: GenerationContext,
+    initialResult: GenerationResult,
     completedSteps: string[],
   ): Promise<Set<string>> {
     const installed = new Set<string>();
@@ -417,7 +422,15 @@ export class DefaultGenerationEngine implements GenerationEngine {
       for (const hook of provider.postInstallHooks ?? []) {
         const step = hook.name;
         context.log(`Running ${hook.name}...`);
-        await this.runStep(step, () => hook.run(context));
+        const hookContext: ProviderHookContext = {
+          ...context,
+          setProviderRuntime: (providerId, runtime) => {
+            const component = initialResult.components.find((item) => item.providerId === providerId);
+            if (!component) throw new Error(`Unknown provider runtime target: ${providerId}`);
+            component.runtime = structuredClone(runtime);
+          },
+        };
+        await this.runStep(step, () => hook.run(hookContext));
         completedSteps.push(step);
         const manager = this.managerForProvider(provider);
         if (manager && (provider.metadata.category === "frontend" || provider.metadata.category === "backend")) {

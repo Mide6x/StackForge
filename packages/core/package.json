@@ -1,8 +1,8 @@
 {
   "name": "@stackforge/core",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Core packages for stackforge, this contains the interfaces that every provider will follow",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

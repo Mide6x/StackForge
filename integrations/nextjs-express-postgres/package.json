@@ -1,7 +1,7 @@
 {
   "name": "@stackforge/integration-nextjs-express-postgres",
-  "version": "0.1.0",
-  "private": false,
+  "version": "0.1.0-alpha.1",
+  "private": true,
   "license": "MPL-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,6 +17,6 @@
     "test": "npm run build && node --test dist/index.test.js"
   },
   "dependencies": {
-    "@stackforge/core": "0.1.0"
+    "@stackforge/core": "0.1.0-alpha.1"
   }
 }

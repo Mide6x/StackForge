@@ -1,13 +1,31 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { ProviderTestingSupport, TestingGenerationContext } from "@stackforge/core";
+import { spawnSync } from "node:child_process";
+import type {
+  ProviderTestingSupport,
+  RuntimeTestCommand,
+  TestingGenerationContext,
+} from "@stackforge/core";
 import { targetDirectory } from "@stackforge/core";
+
+export function fastApiPytestCommands(uvAvailable: boolean): readonly RuntimeTestCommand[] {
+  return uvAvailable
+    ? [{ name: "Unit and API integration tests", command: ["uv", "run", "pytest"] }]
+    : [
+      { name: "Activate virtual environment", command: ["source", ".venv/bin/activate"] },
+      { name: "Unit and API integration tests", command: ["python", "-m", "pytest"] },
+    ];
+}
+
+function hasUvInstalled(): boolean {
+  return spawnSync("uv", ["--version"], { stdio: "ignore" }).status === 0;
+}
 
 const pytestHttpxOption = {
   id: "pytest-httpx",
   name: "pytest + HTTPX",
   description: "Unit and API integration tests against the importable FastAPI application.",
   testTypes: ["unit", "integration"] as const,
-  commands: [{ name: "Unit and API integration tests", command: ["uv", "run", "pytest"] }],
+  commands: fastApiPytestCommands(true),
   default: true,
 };
 
@@ -32,7 +50,14 @@ ${hasDatabase ? "    with patch(\"app.main.check_database\", new=AsyncMock()):\n
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 `);
-  context.result.addTestSuite({ providerId: "fastapi", component: "backend", optionId: pytestHttpxOption.id, name: pytestHttpxOption.name, directory: targetDirectory(context, "backend"), commands: pytestHttpxOption.commands });
+  context.result.addTestSuite({
+    providerId: "fastapi",
+    component: "backend",
+    optionId: pytestHttpxOption.id,
+    name: pytestHttpxOption.name,
+    directory: targetDirectory(context, "backend"),
+    commands: fastApiPytestCommands(hasUvInstalled()),
+  });
 }
 
 export const testing: ProviderTestingSupport = {

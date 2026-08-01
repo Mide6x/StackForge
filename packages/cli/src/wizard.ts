@@ -15,6 +15,7 @@ import {
   inspectDestination,
   resolveDestination,
 } from "./destination.js";
+import type { ParsedCliArguments } from "./cli-options.js";
 
 export const DEFAULT_ADD_TESTS = false;
 
@@ -75,9 +76,10 @@ export async function runWizard(
   providers: StackForgeProvider[],
   integrations: StackForgeIntegration[],
   initialName?: string,
+  overrides?: ParsedCliArguments,
 ): Promise<{ selection: ProviderSelection; rootDirectory: string; projectName: string }> {
   const invocationDirectory = process.cwd();
-  const projectType = ensurePromptValue(await select({
+  const projectType = overrides?.projectType ?? ensurePromptValue(await select({
     message: "What would you like to create?",
     options: [
       { value: "full-stack", label: "Full Stack", hint: "Frontend and backend" },
@@ -91,31 +93,31 @@ export async function runWizard(
   let backendLanguage: SupportedLanguage | undefined;
 
   if (projectType !== "backend-only") {
-    const frontendId = ensurePromptValue(await select({
+    const frontendId = overrides?.frontend ?? ensurePromptValue(await select({
       message: "Choose frontend",
       options: categoryChoices(providers, "frontend"),
     }) as string | symbol);
 
     providerIds.push(frontendId);
-    frontendLanguage = await chooseLanguage(
+    frontendLanguage = overrides?.frontendLanguage ?? await chooseLanguage(
       providers.find((item) => item.metadata.id === frontendId)!,
       "Choose frontend language",
     );
   }
 
   if (projectType !== "frontend-only") {
-    const backendId = ensurePromptValue(await select({
+    const backendId = overrides?.backend ?? ensurePromptValue(await select({
       message: "Choose backend",
       options: categoryChoices(providers, "backend"),
     }) as string | symbol);
 
     providerIds.push(backendId);
-    backendLanguage = await chooseLanguage(
+    backendLanguage = overrides?.backendLanguage ?? await chooseLanguage(
       providers.find((item) => item.metadata.id === backendId)!,
       "Choose backend language",
     );
 
-    const databaseId = ensurePromptValue(await select({
+    const databaseId = overrides?.database ?? ensurePromptValue(await select({
       message: "Choose database",
       options: [
         ...categoryChoices(providers, "database"),
@@ -126,7 +128,7 @@ export async function runWizard(
     if (databaseId !== "none") providerIds.push(databaseId);
   }
 
-  const docker = ensurePromptValue(await confirm({
+  const docker = overrides?.docker ?? ensurePromptValue(await confirm({
     message: "Would you like Docker support?",
     initialValue: true,
   }) as boolean | symbol);
@@ -139,7 +141,9 @@ export async function runWizard(
     docker,
     testing: {},
   };
-  const testing = await askForTesting(providers, integrations, selectionForTesting);
+  const testing = overrides?.yes
+    ? {}
+    : await askForTesting(providers, integrations, selectionForTesting);
 
   const targetInput = initialName
     ? initialName

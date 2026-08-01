@@ -1,6 +1,6 @@
 {
   "name": "stackforge",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "type": "module",
   "description": "An extensible CLI for scaffolding modern application stacks",
@@ -11,16 +11,19 @@
   ],
   "scripts": {
     "build": "npm run build --workspace=@stackforge/core && npm run build --workspaces --if-present",
-    "dev": "npm run dev --workspace=create-stackforge",
+    "dev": "npm run dev --workspace=@mide6x/create-stackforge",
+    "release:next": "node scripts/release-package.mjs next",
+    "release:latest": "node scripts/release-package.mjs latest",
     "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "npm test --workspace=@stackforge/core && npm test --workspace=create-stackforge && npm test --workspace=@stackforge/provider-springboot",
+    "test:unit": "npm test --workspace=@stackforge/core && npm test --workspace=@mide6x/create-stackforge && npm test --workspace=@stackforge/provider-springboot",
     "test:integration": "npm test --workspace=@stackforge/integrations-built-in && npm test --workspace=@stackforge/integration-nextjs-express-postgres",
     "test:generated": "node --import tsx --test tests/generated/*.test.ts",
     "test:generated:e2e": "node --import tsx --test tests/generated/*e2e*.test.ts",
     "test:docker": "node --import tsx --test tests/docker/*.test.ts",
     "test:all": "npm run build && npm test && npm run test:generated && npm run test:docker",
     "validate:governance": "node scripts/validate-governance.mjs",
-    "create": "npm run dev --workspace=create-stackforge"
+    "create": "npm run dev --workspace=@mide6x/create-stackforge",
+    "test:package": "node --import tsx --test tests/package/*.test.ts"
   },
   "engines": {
     "node": ">=20"
@@ -37,5 +40,8 @@
     "@types/node": "^26.1.2",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@mide6x/create-stackforge": "^0.1.0-alpha.1"
   }
 }
