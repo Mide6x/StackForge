@@ -12,6 +12,8 @@
   "scripts": {
     "build": "npm run build --workspace=@stackforge/core && npm run build --workspaces --if-present",
     "dev": "npm run dev --workspace=@mide6x/create-stackforge",
+    "release:next": "node scripts/release-package.mjs next",
+    "release:latest": "node scripts/release-package.mjs latest",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npm test --workspace=@stackforge/core && npm test --workspace=@mide6x/create-stackforge && npm test --workspace=@stackforge/provider-springboot",
     "test:integration": "npm test --workspace=@stackforge/integrations-built-in && npm test --workspace=@stackforge/integration-nextjs-express-postgres",

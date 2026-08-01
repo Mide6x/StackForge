@@ -31,6 +31,15 @@ During local development, the current command is:
 npm run dev -- my-app
 ```
 
+For npm publishing, the repository includes release scripts that refuse to run from a dirty git working tree and automatically bump the CLI package version before publishing:
+
+```bash
+npm run release:next
+npm run release:latest
+```
+
+`release:next` bumps the prerelease version for `@mide6x/create-stackforge` and publishes with the `next` tag. `release:latest` bumps to the next stable patch version and publishes with the `latest` tag.
+
 StackForge is designed to support:
 
 - Full-stack applications
