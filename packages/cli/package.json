@@ -34,6 +34,6 @@
     "@stackforge/provider-springboot": "0.1.0-alpha.1",
     "@stackforge/provider-supabase": "0.1.0-alpha.1",
     "@stackforge/provider-vue": "0.1.0-alpha.1",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.2"
   }
 }
