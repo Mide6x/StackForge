@@ -22,7 +22,7 @@
     "test": "node --import tsx --test src/*.test.ts src/**/*.test.ts"
   },
   "devDependencies": {
-    "@clack/prompts": "^1.7.0",
+    "@clack/prompts": "^1.8.0",
     "@stackforge/core": "0.1.0-alpha.1",
     "@stackforge/integrations-built-in": "0.1.0-alpha.1",
     "@stackforge/provider-express": "0.1.0-alpha.1",
@@ -34,6 +34,6 @@
     "@stackforge/provider-springboot": "0.1.0-alpha.1",
     "@stackforge/provider-supabase": "0.1.0-alpha.1",
     "@stackforge/provider-vue": "0.1.0-alpha.1",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.2"
   }
 }
